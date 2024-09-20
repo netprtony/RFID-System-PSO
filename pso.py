@@ -1,62 +1,90 @@
-import numpy as np 
-from deap import base, creator, tools, algorithms
-from RFID  import calculate_distances, tags
-import random
+from random import random
+from random import uniform
 
-# Thiết lập môi trường PSO
-creator.create("FitnessMin", base.Fitness, weights=(-1.0,))
-creator.create("Particle", list, fitness=creator.FitnessMin, speed=None, smin=None, smax=None, best=None)
+class Particle:
+    def __init__(self, x0):
+        self.position_i=[]          # particle position
+        self.velocity_i=[]          # particle velocity
+        self.pos_best_i=[]          # best position individual
+        self.err_best_i=-1          # best error individual
+        self.err_i=-1               # error individual
 
-def generate_particle(size, smin, smax):
-    particle = creator.Particle(random.uniform(-10, 10) for _ in range(size))
-    particle.speed = [random.uniform(smin, smax) for _ in range(size)]
-    particle.smin = smin
-    particle.smax = smax
-    return particle
+        for i in range(0,num_dimensions):
+            self.velocity_i.append(uniform(-1,1))
+            self.position_i.append(x0[i])
 
-def update_particle(part, best, phi1, phi2):
-    u1 = (random.uniform(0, phi1) for _ in range(len(part)))
-    u2 = (random.uniform(0, phi2) for _ in range(len(part)))
-    v_u1 = map(lambda u1, s: u1 * (s - x), u1, part.best)
-    v_u2 = map(lambda u2, s: u2 * (s - x), u2, best)
-    part.speed = list(map(lambda v, u1, u2: v + u1 + u2, part.speed, v_u1, v_u2))
-    for i, speed in enumerate(part.speed):
-        if speed < part.smin:
-            part.speed[i] = part.smin
-        elif speed > part.smax:
-            part.speed[i] = part.smax
-    part[:] = list(map(lambda x, v: x + v, part, part.speed))
+    # evaluate current fitness
+    def evaluate(self,costFunc):
+        self.err_i=costFunc(self.position_i)
 
-def evaluate_particle(particle):
-    new_readers = np.array(particle).reshape(-1, 2)
-    distances = calculate_distances(tags, new_readers)
-    return np.mean(distances),
+        # check to see if the current position is an individual best
+        if self.err_i<self.err_best_i or self.err_best_i==-1:
+            self.pos_best_i=self.position_i.copy()
+            self.err_best_i=self.err_i
+                    
+    # update new particle velocity
+    def update_velocity(self,pos_best_g):
+        w=0.5       # constant inertia weight (how much to weigh the previous velocity)
+        c1=1        # cognative constant
+        c2=2        # social constant
+        
+        for i in range(0,num_dimensions):
+            r1=random()
+            r2=random()
+            
+            vel_cognitive=c1*r1*(self.pos_best_i[i]-self.position_i[i])
+            vel_social=c2*r2*(pos_best_g[i]-self.position_i[i])
+            self.velocity_i[i]=w*self.velocity_i[i]+vel_cognitive+vel_social
 
-toolbox = base.Toolbox()
-toolbox.register("particle", generate_particle, size=8, smin=-1, smax=1)
-toolbox.register("population", tools.initRepeat, list, toolbox.particle)
-toolbox.register("update", update_particle, phi1=2.0, phi2=2.0)
-toolbox.register("evaluate", evaluate_particle)
+    # update the particle position based off new velocity updates
+    def update_position(self,bounds):
+        for i in range(0,num_dimensions):
+            self.position_i[i]=self.position_i[i]+self.velocity_i[i]
+            
+            # adjust maximum position if necessary
+            if self.position_i[i]>bounds[i][1]:
+                self.position_i[i]=bounds[i][1]
 
-# Tạo quần thể
-population = toolbox.population(n=10)
+            # adjust minimum position if neseccary
+            if self.position_i[i]<bounds[i][0]:
+                self.position_i[i]=bounds[i][0]
 
-# Tìm kiếm vị trí tốt nhất
-best = None
-for gen in range(100):
-    for part in population:
-        part.fitness.values = toolbox.evaluate(part)
-        if not part.best or part.best.fitness > part.fitness:
-            part.best = creator.Particle(part)
-            part.best.fitness.values = part.fitness.values
-        if not best or best.fitness > part.fitness:
-            best = creator.Particle(part)
-            best.fitness.values = part.fitness.values
+def minimize(costFunc, x0, bounds, num_particles, maxiter, verbose=False):
+    global num_dimensions
 
-    for part in population:
-        toolbox.update(part, best)
+    num_dimensions=len(x0)
+    err_best_g=-1                   # best error for group
+    pos_best_g=[]                   # best position for group
 
-# Kết quả tối ưu hóa
-print("Vị trí tối ưu của các đầu đọc:")
-optimal_readers = np.array(best).reshape(-1, 2)
-print(optimal_readers)
+    # establish the swarm
+    swarm=[]
+    for i in range(0,num_particles):
+        swarm.append(Particle(x0))
+
+    # begin optimization loop
+    i=0
+    while i<maxiter:
+        if verbose: print(f'iter: {i:>4d}, best solution: {err_best_g:10.6f}')
+            
+        # cycle through particles in swarm and evaluate fitness
+        for j in range(0,num_particles):
+            swarm[j].evaluate(costFunc)
+
+            # determine if current particle is the best (globally)
+            if swarm[j].err_i<err_best_g or err_best_g==-1:
+                pos_best_g=list(swarm[j].position_i)
+                err_best_g=float(swarm[j].err_i)
+        
+        # cycle through swarm and update velocities and position
+        for j in range(0,num_particles):
+            swarm[j].update_velocity(pos_best_g)
+            swarm[j].update_position(bounds)
+        i+=1
+
+    # print final results
+    if verbose:
+        print('\nFINAL SOLUTION:')
+        print(f'   > {pos_best_g}')
+        print(f'   > {err_best_g}\n')
+
+    return err_best_g, pos_best_g

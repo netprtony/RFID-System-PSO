@@ -3,11 +3,10 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 grid_x, grid_y = 10, 6 # Kích thước của 1 lớp học
 num_individuals = 50 # Sô lượng sinh viên
-num_rfid_readers = 5  # Số lượng đầu đọc RFID
+num_rfid_readers = 3  # Số lượng đầu đọc RFID
 individuals = np.random.rand(num_individuals, 2) * [grid_x, grid_y]
 num_iterations = 200  # Số vòng lặp
-# Tạo 3 điểm ngẫu nhiên cho các đầu đọc RFID
-#rfid_readers = np.random.rand(num_rfid_readers, 2) * [grid_x, grid_y]
+
 rfid_radius = 3.69 # Bán kính vùng phủ sóng của đầu đọc
 
 # Hàm để kiểm tra khoảng cách giữa hai điểm
@@ -89,24 +88,41 @@ pbest_scores = np.full(num_rfid_readers, np.inf)  # Số lượng cá thể khô
 
 gbest_position = rfid_readers[0]  # Khởi tạo với một giá trị hợp lệ từ vị trí đầu đọc ban đầu
 gbest_score = np.inf 
-
+max_no_change_iterations = 5  # Số lần không thay đổi tối đa trước khi dừng
+no_change_counter = 0         # Bộ đếm cho số lần không thay đổi liên tiếp
+previous_gbest_score = gbest_score  # Biến lưu giá trị của gbest từ lần chạy trước
 def update(frame):
-    global rfid_readers, velocities, gbest_position, gbest_score
+    global rfid_readers, velocities, gbest_position, gbest_score, previous_gbest_score, no_change_counter, max_no_change_iterations
+    # Đánh giá hàm mục tiêu cho toàn bộ quần thể
+    coverage_ratio = objective_function(rfid_readers)
 
+    # Kiểm tra nếu tất cả các thẻ đã được bao phủ
+    if coverage_ratio == 1.0:
+        print(f"All tags are covered at iteration. Stopping the optimization.")
+        return
     for i in range(num_rfid_readers):
-        # Đánh giá hàm mục tiêu cho từng cá thể
-        current_score = objective_function(rfid_readers)
+         # Đánh giá hàm mục tiêu cho từng cá thể, chỉ đánh giá theo vị trí của đầu đọc i
+        current_score = objective_function(np.array([rfid_readers[i]]))
 
-        # Cập nhật vị trí tốt nhất của cá thể
-        if current_score < pbest_scores[i]:
+        # Cập nhật vị trí tốt nhất của cá thể (pbest)
+        if current_score > pbest_scores[i]:  # Tìm max coverage ratio (càng nhiều cá thể được phủ càng tốt)
             pbest_scores[i] = current_score
-            pbest_positions[i] = rfid_readers[i]
+            pbest_positions[i] = np.copy(rfid_readers[i])
 
-        # Cập nhật vị trí tốt nhất của toàn bộ quần thể
-        if current_score < gbest_score:
+        # Cập nhật vị trí tốt nhất của toàn bộ quần thể (gbest)
+        if current_score > gbest_score:  # Nếu điểm số hiện tại của cá thể i tốt hơn gbest
             gbest_score = current_score
-            gbest_position = np.copy(rfid_readers[i])  # Cập nhật vị trí tốt nhất
+            gbest_position = np.copy(rfid_readers[i])  # Cập nhật vị trí tốt nhất toàn quần thể
+   # Kiểm tra điều kiện dừng
+    if gbest_score == previous_gbest_score:
+        no_change_counter += 1  # Tăng bộ đếm nếu gbest_score không thay đổi
+    else:
+        no_change_counter = 0   # Reset bộ đếm nếu có thay đổi
+        previous_gbest_score = gbest_score  # Cập nhật gbest_score mới nhất
 
+    # Dừng vòng lặp nếu qua 5 lần không có sự thay đổi
+    if no_change_counter >= max_no_change_iterations:
+        print(f"Stopping early after iterations due to no change in objective function.")
     # Cập nhật vận tốc và vị trí của các đầu đọc RFID
     for i in range(num_rfid_readers):
         # Cập nhật vận tốc
@@ -128,11 +144,10 @@ def update(frame):
 
         # Kiểm tra khoảng cách với các đầu đọc khác
         #if is_valid_distance(new_position, np.delete(rfid_readers, i, axis=0), rfid_radius):
+        rfid_readers[i] = new_position
         print(f"Còn {CountIndividualNotCover()} sinh viên chưa được bao phủ")
         # In ra vị trí trước và sau khi cập nhật
         print(f"RFID Reader {i+1} cập nhật vị trí từ {rfid_readers[i]} đến {new_position}")
-        rfid_readers[i] = new_position
-
     # Cập nhật vị trí các đầu đọc trên biểu đồ
     scatter_rfid.set_offsets(rfid_readers)
 
@@ -145,5 +160,5 @@ def update(frame):
 # Tạo hoạt hình
 ani = FuncAnimation(fig, update, frames=num_iterations, repeat=False, blit=False, interval=500)
 
-plt.legend()
+#plt.legend()
 plt.show()

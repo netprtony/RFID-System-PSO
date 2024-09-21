@@ -1,90 +1,56 @@
-from random import random
-from random import uniform
+import numpy as np
+import matplotlib.pyplot as plt
 
+# Hàm mục tiêu: trong ví dụ này, ta dùng hàm đơn giản để minh họa (có thể thay đổi theo yêu cầu)
+def objective_function(position):
+    return np.sum(position**2)
+
+# Lớp đại diện cho mỗi hạt trong PSO
 class Particle:
-    def __init__(self, x0):
-        self.position_i=[]          # particle position
-        self.velocity_i=[]          # particle velocity
-        self.pos_best_i=[]          # best position individual
-        self.err_best_i=-1          # best error individual
-        self.err_i=-1               # error individual
+    def __init__(self, dim):
+        self.position = np.random.uniform(-1, 1, dim)
+        self.velocity = np.zeros(dim)
+        self.best_position = self.position.copy()
+        self.best_value = float('inf')
 
-        for i in range(0,num_dimensions):
-            self.velocity_i.append(uniform(-1,1))
-            self.position_i.append(x0[i])
+    def update_velocity(self, global_best_position, w=0.5, c1=1.5, c2=1.5):
+        r1 = np.random.rand(len(self.position))
+        r2 = np.random.rand(len(self.position))
+        cognitive_component = c1 * r1 * (self.best_position - self.position)
+        social_component = c2 * r2 * (global_best_position - self.position)
+        self.velocity = w * self.velocity + cognitive_component + social_component
 
-    # evaluate current fitness
-    def evaluate(self,costFunc):
-        self.err_i=costFunc(self.position_i)
+    def update_position(self):
+        self.position += self.velocity
 
-        # check to see if the current position is an individual best
-        if self.err_i<self.err_best_i or self.err_best_i==-1:
-            self.pos_best_i=self.position_i.copy()
-            self.err_best_i=self.err_i
-                    
-    # update new particle velocity
-    def update_velocity(self,pos_best_g):
-        w=0.5       # constant inertia weight (how much to weigh the previous velocity)
-        c1=1        # cognative constant
-        c2=2        # social constant
-        
-        for i in range(0,num_dimensions):
-            r1=random()
-            r2=random()
-            
-            vel_cognitive=c1*r1*(self.pos_best_i[i]-self.position_i[i])
-            vel_social=c2*r2*(pos_best_g[i]-self.position_i[i])
-            self.velocity_i[i]=w*self.velocity_i[i]+vel_cognitive+vel_social
+class SPSO:
+    def __init__(self, num_particles, dim, max_iter):
+        self.num_particles = num_particles
+        self.dim = dim
+        self.max_iter = max_iter
+        self.particles = [Particle(dim) for _ in range(num_particles)]
+        self.global_best_position = np.random.uniform(-1, 1, dim)
+        self.global_best_value = float('inf')
+        self.history = []
 
-    # update the particle position based off new velocity updates
-    def update_position(self,bounds):
-        for i in range(0,num_dimensions):
-            self.position_i[i]=self.position_i[i]+self.velocity_i[i]
-            
-            # adjust maximum position if necessary
-            if self.position_i[i]>bounds[i][1]:
-                self.position_i[i]=bounds[i][1]
+    def optimize(self):
+        for _ in range(self.max_iter):
+            for particle in self.particles:
+                # Đánh giá hàm mục tiêu
+                fitness_value = objective_function(particle.position)
+                # Cập nhật vị trí tốt nhất của từng hạt
+                if fitness_value < particle.best_value:
+                    particle.best_position = particle.position.copy()
+                    particle.best_value = fitness_value
+                # Cập nhật vị trí tốt nhất của toàn bộ quần thể
+                if fitness_value < self.global_best_value:
+                    self.global_best_position = particle.position.copy()
+                    self.global_best_value = fitness_value
+            # Cập nhật vận tốc và vị trí của mỗi hạt
+            for particle in self.particles:
+                particle.update_velocity(self.global_best_position)
+                particle.update_position()
+            # Ghi lại giá trị tốt nhất tại mỗi vòng lặp
+            self.history.append(self.global_best_value)
 
-            # adjust minimum position if neseccary
-            if self.position_i[i]<bounds[i][0]:
-                self.position_i[i]=bounds[i][0]
-
-def minimize(costFunc, x0, bounds, num_particles, maxiter, verbose=False):
-    global num_dimensions
-
-    num_dimensions=len(x0)
-    err_best_g=-1                   # best error for group
-    pos_best_g=[]                   # best position for group
-
-    # establish the swarm
-    swarm=[]
-    for i in range(0,num_particles):
-        swarm.append(Particle(x0))
-
-    # begin optimization loop
-    i=0
-    while i<maxiter:
-        if verbose: print(f'iter: {i:>4d}, best solution: {err_best_g:10.6f}')
-            
-        # cycle through particles in swarm and evaluate fitness
-        for j in range(0,num_particles):
-            swarm[j].evaluate(costFunc)
-
-            # determine if current particle is the best (globally)
-            if swarm[j].err_i<err_best_g or err_best_g==-1:
-                pos_best_g=list(swarm[j].position_i)
-                err_best_g=float(swarm[j].err_i)
-        
-        # cycle through swarm and update velocities and position
-        for j in range(0,num_particles):
-            swarm[j].update_velocity(pos_best_g)
-            swarm[j].update_position(bounds)
-        i+=1
-
-    # print final results
-    if verbose:
-        print('\nFINAL SOLUTION:')
-        print(f'   > {pos_best_g}')
-        print(f'   > {err_best_g}\n')
-
-    return err_best_g, pos_best_g
+        return self.global_best_position, self.global_best_value

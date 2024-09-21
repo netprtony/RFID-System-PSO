@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-
+from matplotlib.animation import FuncAnimation
 grid_x, grid_y = 10, 6 # Kích thước của 1 lớp học
 num_individuals = 50 # Sô lượng sinh viên
 num_rfid_readers = 3  # Số lượng đầu đọc RFID
@@ -31,7 +31,22 @@ rfid_readers = np.array(rfid_readers)
 # Vận tốc ban đầu của các đầu đọc RFID
 velocities = np.random.rand(num_rfid_readers, 2) * 0.1  # Tốc độ nhỏ
 
+# Khởi tạo biểu đồ
+fig, ax = plt.subplots()
+ax.set_xlabel('X Coordinate')
+ax.set_ylabel('Y Coordinate')
+ax.set_xlim(0, grid_x)  
+ax.set_ylim(0, grid_y)  
+ax.set_aspect('equal', 'box')
 
+# Vẽ các cá thể
+ax.scatter(individuals[:, 0], individuals[:, 1], color='blue', label='Individuals')
+
+# Các danh sách để theo dõi các điểm cần vẽ
+scatter_rfid = ax.scatter(rfid_readers[:, 0], rfid_readers[:, 1], color='red', label='RFID Readers')
+circles = [plt.Circle((x, y), rfid_radius, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in rfid_readers]
+for circle in circles:
+    ax.add_artist(circle)
 def show_chart(individuals, rfid_readers):
     # Hiển thị kết quả trên biểu đồ
     fig, ax = plt.subplots()
@@ -64,6 +79,26 @@ def show_chart(individuals, rfid_readers):
 
     # Hiển thị biểu đồ
     plt.show()
+# Hàm tính độ nhiễu của một cá thể (sinh viên)
+def noiseLevel_Individual(individual):
+    level = 0
+    for reader in rfid_readers:
+        distance = np.linalg.norm(individual - reader)
+        if distance < rfid_radius:
+            level+=1
+    return level
+# Hàm kiểm tra một cá thể (sinh viên) có được bao phủ hay chưa?
+def IsIndividualCover(individual):
+    if noiseLevel_Individual(individual) == 0:
+        return False
+    else: return True
+# Hàm đếm các cá thể chưa được bao phủ
+def CountIndividualNotCover():
+    count = 0
+    for individual in individuals:
+        if not IsIndividualCover(individual):
+            count+=1
+    return count
 
 # Hàm mục tiêu: Đếm số cá thể không được bao phủ bởi bất kỳ đầu đọc nào
 def objective_function(rfid_readers):
@@ -72,7 +107,7 @@ def objective_function(rfid_readers):
         covered = False
         for reader in rfid_readers:
             distance = np.linalg.norm(individual - reader)
-            if distance <= rfid_radius:
+            if distance < rfid_radius:
                 covered = True
                 break
         if not covered:
@@ -86,8 +121,57 @@ pbest_scores = np.full(num_rfid_readers, np.inf)  # Số lượng cá thể khô
 gbest_position = rfid_readers[0]  # Khởi tạo với một giá trị hợp lệ từ vị trí đầu đọc ban đầu
 gbest_score = np.inf 
 
-# PSO - SSPSO
-for iteration in range(num_iterations):
+# # PSO - SSPSO
+# for iteration in range(num_iterations):
+#     print(f"Iteration {iteration}")
+#     for i in range(num_rfid_readers):
+#         # Đánh giá hàm mục tiêu cho từng cá thể
+#         current_score = objective_function(rfid_readers)
+
+#         # Cập nhật vị trí tốt nhất của cá thể
+#         if current_score < pbest_scores[i]:
+#             pbest_scores[i] = current_score
+#             pbest_positions[i] = rfid_readers[i]
+
+#         # Cập nhật vị trí tốt nhất của toàn bộ quần thể
+#         if current_score < gbest_score:
+#             gbest_score = current_score
+#             gbest_position = rfid_readers[i]
+
+#     # Kiểm tra nếu tất cả các cá thể đã được bao phủ
+#     if gbest_score == 0:
+#         print(f"Tìm thấy giải pháp tối ưu tại vòng lặp {iteration}")
+#         break
+
+#     # Cập nhật vận tốc và vị trí của các đầu đọc RFID
+#     for i in range(num_rfid_readers):
+#         # Cập nhật vận tốc
+#         inertia = 0.5  # Hệ số quán tính
+#         cognitive = 0.8  # Hệ số học hỏi cá nhân
+#         social = 0.9  # Hệ số học hỏi xã hội
+
+#         r1, r2 = np.random.rand(2)
+#         velocities[i] = (inertia * velocities[i] +
+#                          cognitive * r1 * (pbest_positions[i] - rfid_readers[i]) +
+#                          social * r2 * (gbest_position - rfid_readers[i]))
+
+#         # Cập nhật vị trí
+#         new_position = rfid_readers[i] + velocities[i]
+#         # Giới hạn vị trí trong vùng làm việc
+#         new_position[0] = np.clip(new_position[0], 0, grid_x)
+#         new_position[1] = np.clip(new_position[1], 0, grid_y)
+
+#         #if is_valid_distance(new_position, np.delete(rfid_readers, i, axis=0), rfid_radius):
+#         print(f"Còn {CountIndividualNotCover()} sinh viên chưa được bao phủ")
+#         # In ra vị trí trước và sau khi cập nhật
+#         print(f"RFID Reader {i+1} cập nhật vị trí từ {rfid_readers[i]} đến {new_position}")
+#         rfid_readers[i] = new_position
+#         show_chart(individuals, rfid_readers)
+
+# show_chart(individuals, rfid_readers)
+def update(frame):
+    global rfid_readers, velocities, gbest_position, gbest_score
+
     for i in range(num_rfid_readers):
         # Đánh giá hàm mục tiêu cho từng cá thể
         current_score = objective_function(rfid_readers)
@@ -100,12 +184,7 @@ for iteration in range(num_iterations):
         # Cập nhật vị trí tốt nhất của toàn bộ quần thể
         if current_score < gbest_score:
             gbest_score = current_score
-            gbest_position = rfid_readers[i]
-
-    # Kiểm tra nếu tất cả các cá thể đã được bao phủ
-    if gbest_score == 0:
-        print(f"Tìm thấy giải pháp tối ưu tại vòng lặp {iteration}")
-        break
+            gbest_position = np.copy(rfid_readers[i])  # Cập nhật vị trí tốt nhất
 
     # Cập nhật vận tốc và vị trí của các đầu đọc RFID
     for i in range(num_rfid_readers):
@@ -121,14 +200,29 @@ for iteration in range(num_iterations):
 
         # Cập nhật vị trí
         new_position = rfid_readers[i] + velocities[i]
+
         # Giới hạn vị trí trong vùng làm việc
         new_position[0] = np.clip(new_position[0], 0, grid_x)
         new_position[1] = np.clip(new_position[1], 0, grid_y)
 
-        if is_valid_distance(new_position, np.delete(rfid_readers, i, axis=0), rfid_radius):
-            # In ra vị trí trước và sau khi cập nhật
-            print(f"RFID Reader {i+1} cập nhật vị trí từ {rfid_readers[i]} đến {new_position}")
-            rfid_readers[i] = new_position
-        show_chart(individuals, rfid_readers)
+        # Kiểm tra khoảng cách với các đầu đọc khác
+        #if is_valid_distance(new_position, np.delete(rfid_readers, i, axis=0), rfid_radius):
+        print(f"Còn {CountIndividualNotCover()} sinh viên chưa được bao phủ")
+        # In ra vị trí trước và sau khi cập nhật
+        print(f"RFID Reader {i+1} cập nhật vị trí từ {rfid_readers[i]} đến {new_position}")
+        rfid_readers[i] = new_position
 
-show_chart(individuals, rfid_readers)
+    # Cập nhật vị trí các đầu đọc trên biểu đồ
+    scatter_rfid.set_offsets(rfid_readers)
+
+    # Cập nhật các vòng tròn
+    for j, circle in enumerate(circles):
+        circle.center = (rfid_readers[j, 0], rfid_readers[j, 1])
+
+    return scatter_rfid, *circles
+
+# Tạo hoạt hình
+ani = FuncAnimation(fig, update, frames=num_iterations, repeat=False, blit=False, interval=500)
+
+plt.legend()
+plt.show()

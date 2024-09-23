@@ -95,7 +95,8 @@ def update(frame):
     global rfid_readers, velocities, gbest_position, gbest_score, previous_gbest_score, no_change_counter, max_no_change_iterations
     # Đánh giá hàm mục tiêu cho toàn bộ quần thể
     coverage_ratio = objective_function(rfid_readers)
-
+    # In ra tỷ lệ bao phủ (%) và giá trị bao phủ hiện tại
+    print(f"Coverage Ratio = {coverage_ratio * 100:.2f}% ({coverage_ratio:.4f})")
     # Kiểm tra nếu tất cả các thẻ đã được bao phủ
     if coverage_ratio == 1.0:
         print(f"All tags are covered at iteration. Stopping the optimization.")
@@ -123,6 +124,7 @@ def update(frame):
     # Dừng vòng lặp nếu qua 5 lần không có sự thay đổi
     if no_change_counter >= max_no_change_iterations:
         print(f"Stopping early after iterations due to no change in objective function.")
+
     # Cập nhật vận tốc và vị trí của các đầu đọc RFID
     for i in range(num_rfid_readers):
         # Cập nhật vận tốc

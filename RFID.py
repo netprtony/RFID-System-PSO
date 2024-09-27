@@ -1,8 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-grid_x, grid_y = 10, 6 # Kích thước của 1 lớp học
-num_individuals = 50 # Sô lượng sinh viên
+grid_x, grid_y = 10, 10 # Kích thước của 1 lớp học
+num_individuals = 43 # Sô lượng sinh viên
 num_rfid_readers = 3  # Số lượng đầu đọc RFID
 individuals = np.random.rand(num_individuals, 2) * [grid_x, grid_y]
 num_iterations = 200  # Số vòng lặp

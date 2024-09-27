@@ -15,10 +15,28 @@ def covered_ratio(rfid_readers, individuals):
 def objective_function(position):
     return 1 / (1 + np.sum(position**2))
 
+def BieuDo(READERS):
+    # Khởi tạo biểu đồ
+    fig, ax = plt.subplots()
+    ax.set_xlabel('X Coordinate')
+    ax.set_ylabel('Y Coordinate')
+    ax.set_xlim(0, GRID_X)  
+    ax.set_ylim(0, GRID_Y)  
+    ax.set_aspect('equal', 'box')
+
+    # Vẽ các cá thể
+    ax.scatter(INDIVIDUALS[:, 0], INDIVIDUALS[:, 1], color='blue', label='Individuals')
+    # Các danh sách để theo dõi các điểm cần vẽ
+
+    scatter_rfid = ax.scatter(READERS[:, 0], READERS[:, 1], color='red', label='RFID Readers')
+    circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in READERS]
+    for circle in circles:
+        ax.add_artist(circle)
+    plt.show()
 # Lớp đại diện cho mỗi hạt trong PSO
 class Particle:
     def __init__(self, dim):
-        self.position = np.random.uniform(GRID_X, GRID_Y, dim)
+        self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
         self.velocity = np.zeros(dim)
         self.best_position = self.position.copy()
         self.best_value = float('inf')
@@ -65,9 +83,9 @@ class SSPSO:
             self.history.append(self.global_best_value)
         # Trả về vị trí của từng hạt và vị trí tốt nhất toàn bộ quần thể
         final_positions = np.array([particle.position for particle in self.particles])
-        return final_positions, self.global_best_position, self.global_best_value
+        return final_positions
     
-GRID_X, GRID_Y = 10, 6 # Kích thước của 1 lớp học
+GRID_X, GRID_Y = 100, 100 # Kích thước của 1 lớp học
 NUM_INDIVIDUALS = 50 # Sô lượng sinh viên
 NUM_RFID_READERS = 3  # Số lượng đầu đọc RFID
 INDIVIDUALS = np.random.rand(NUM_INDIVIDUALS, 2) * [GRID_X, GRID_Y]
@@ -77,21 +95,6 @@ DIM = 2
 ALPHA = 0.7
 
 sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, ALPHA)
-final_positions, best_position, best_value = sspso.optimize()
+final_positions = sspso.optimize()
 print(final_positions)
-# Khởi tạo biểu đồ
-fig, ax = plt.subplots()
-ax.set_xlabel('X Coordinate')
-ax.set_ylabel('Y Coordinate')
-ax.set_xlim(0, GRID_X)  
-ax.set_ylim(0, GRID_Y)  
-ax.set_aspect('equal', 'box')
-
-# Vẽ các cá thể
-ax.scatter(INDIVIDUALS[:, 0], INDIVIDUALS[:, 1], color='blue', label='Individuals')
-# Các danh sách để theo dõi các điểm cần vẽ
-scatter_rfid = ax.scatter(final_positions[:, 0], final_positions[:, 1], color='red', label='RFID Readers')
-circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in final_positions]
-for circle in circles:
-    ax.add_artist(circle)
-plt.show()
+BieuDo(final_positions)

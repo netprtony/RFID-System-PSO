@@ -19,7 +19,21 @@ def is_valid_distance(new_point, points, min_distance):
         if np.linalg.norm(new_point - point) < min_distance:
             return False
     return True
+def calculate_inertia_weight(w_max, w_min, iter, iter_max):
+    """
+    Tính giá trị w theo công thức w = w_max - ((w_max - w_min) / iter_max) * iter
+    
+    Parameters:
+    - w_max: Trọng số lớn nhất (w_max)
+    - w_min: Trọng số nhỏ nhất (w_min)
+    - iter: Số vòng lặp hiện tại
+    - iter_max: Số vòng lặp tối đa
 
+    Returns:
+    - w: Trọng số w ở vòng lặp hiện tại
+    """
+    w = w_max - ((w_max - w_min) / iter_max) * iter
+    return w
 
 def BieuDo(READERS, STUDENTS):
     fig, ax = plt.subplots()
@@ -94,7 +108,7 @@ def BieuDo(READERS, STUDENTS):
         return scatter_students
 
     # Animation cho quá trình cập nhật vị trí của reader
-    ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
+    #ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
 
     # Animation cho quá trình cập nhật vị trí của student
     ani_student = animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
@@ -153,7 +167,7 @@ def fitness(READERS, STUDENTS):
     fitness_value = covered_students #- ALPHA * overlap_penalty
     return fitness_value
 class SSPSO:
-    def __init__(self, num_particles, dim, max_iter, alpha=0.5):
+    def __init__(self, num_particles, dim, max_iter, alpha=0.5, w_max=0.9, w_min=0.4):
         self.num_particles = num_particles
         self.dim = dim
         self.alpha = alpha
@@ -161,9 +175,13 @@ class SSPSO:
         self.readers = [Readers(dim) for _ in range(num_particles)]
         self.global_best_position = self.readers[0]
         self.global_best_value = float('inf')
+        self.w_max = w_max  # Giá trị w_max
+        self.w_min = w_min  # Giá trị w_min
 
     def optimize(self, STUDENTS):
-        for _ in range(self.max_iter):
+        for iter in range(self.max_iter):
+            # Tính toán hệ số quán tính (w)
+            w = calculate_inertia_weight(self.w_max, self.w_min, iter, self.max_iter)
             for particle in self.readers:
                 # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
                 fitness_value = fitness(self.readers, STUDENTS)
@@ -180,7 +198,7 @@ class SSPSO:
             
             # Cập nhật vận tốc và vị trí của mỗi hạt
             for particle in self.readers:
-                particle.update_velocity(self.global_best_position)
+                particle.update_velocity(self.global_best_position, weight = w)
                 particle.update_position()
         
         return self.readers

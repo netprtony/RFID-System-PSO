@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 GRID_X, GRID_Y = 50, 50 # Kích thước của 1 lớp học
 NUM_INDIVIDUALS = 500 # Sô lượng sinh viên
-NUM_RFID_READERS = 100  # Số lượng đầu đọc RFID
-NUM_ITERATION = 200  # Số vòng lặp
+NUM_RFID_READERS = 50  # Số lượng đầu đọc RFID
+NUM_ITERATION = 5  # Số vòng lặp
 RFID_RADIUS = 3.69 # Bán kính vùng phủ sóng của đầu đọc
 DIM = 2
 ALPHA = 0.7
@@ -13,12 +13,6 @@ UPDATE_INTERVAL = 500
 MOVE_PERCENTAGE_MIN = 0.01  # Tỷ lệ di chuyển tối thiểu
 MOVE_PERCENTAGE_MAX = 0.02  # Tỷ lệ di chuyển tối đa
 
-def schwefel(reader):
-    reader = np.atleast_2d(reader)
-    x, y = reader.shape
-    res = 418.982887*y - np.sum(reader*np.sin(np.sqrt(np.absolute(reader))), axis=1, keepdims=True)
-    assert(res.shape == (x, 1))
-    return res
 # Hàm để kiểm tra khoảng cách giữa hai điểm
 def is_valid_distance(new_point, points, min_distance):
     for point in points:
@@ -34,57 +28,74 @@ def BieuDo(READERS, STUDENTS):
     ax.set_xlim(0, GRID_X)
     ax.set_ylim(0, GRID_Y)
     ax.set_aspect('equal', 'box')
+
     # Tối ưu hóa bằng thuật toán PSO
-    sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION)
-    r = sspso.optimize()
-    print(r)
-    for reader in READERS:
-            reader.update_position()
+    #sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION)
+   # READERS = sspso.readers  # Khởi tạo readers từ SSPSO
+
     # Trích xuất vị trí sinh viên và đầu đọc RFID
     student_positions = np.array([student.position for student in STUDENTS])
     reader_positions = np.array([reader.position for reader in READERS])
 
     scatter_students = ax.scatter(student_positions[:, 0], student_positions[:, 1], color='blue', label='Students', s=10)
     scatter_rfid = ax.scatter(reader_positions[:, 0], reader_positions[:, 1], color='red', label='RFID Readers', marker='^')
-    scatter_rfid.set_offsets(reader_positions)
+
+    # Tạo các hình tròn biểu diễn vùng phủ sóng của các đầu đọc RFID
     circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in reader_positions]
     for circle in circles:
         ax.add_artist(circle)
+
     # Text hiển thị số sinh viên trong vùng bán kính
     count_text = ax.text(0.02, 1.05, 'Students in range: 0', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-   
+    
+    # Hàm cập nhật vị trí của các reader
+    # def update_reader(frame):
+    #     sspso.optimize(STUDENTS)  # Chạy từng vòng lặp tối ưu cho mỗi frame
+    #     reader_positions = np.array([reader.position for reader in READERS])
+    #     reader_positions = np.atleast_2d(reader_positions)
 
-    def update(frame):
+    #     # Cập nhật vị trí của các đầu đọc RFID
+    #     scatter_rfid.set_offsets(reader_positions)
+
+    #     # Cập nhật vị trí của các hình tròn vùng phủ sóng
+    #     for i, circle in enumerate(circles):
+    #         circle.center = reader_positions[i]
+
+    #     print(f"Iteration {frame}: Updated reader positions")
+    #     return scatter_rfid, *circles
+
+    # Hàm cập nhật vị trí của các student
+    def update_student(frame):
         for student in STUDENTS:
             student.update_position()
         student_positions = np.array([student.position for student in STUDENTS])
-        #reader_positions = np.array([reader.position for reader in READERS])
+        student_positions = np.atleast_2d(student_positions)
 
         # Cập nhật màu sắc của sinh viên dựa trên vị trí
         colors = []
-        count_in_range  = 0
+        count_in_range = 0
         for student in student_positions:
-            # Kiểm tra khoảng cách đến các đầu đọc RFID
             if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
-                colors.append('green')  # Đổi thành màu xanh lục
-                count_in_range  += 1 
+                colors.append('green')  # Đổi thành màu xanh lục nếu trong vùng phủ sóng
+                count_in_range += 1
             else:
-                colors.append('blue')  # Giữ màu xanh dương
+                colors.append('blue')  # Giữ màu xanh dương nếu ngoài vùng phủ sóng
 
         scatter_students.set_offsets(student_positions)
-        scatter_students.set_color(colors)  # Cập nhật màu sắc
+        scatter_students.set_color(colors)  # Cập nhật màu sắc của sinh viên
 
-        scatter_students.set_offsets(student_positions)
-        # scatter_rfid.set_offsets(reader_positions)
-
-        # for i, circle in enumerate(circles):
-        #     circle.center = reader_positions[i]
-       # Cập nhật số sinh viên trong vùng bán kính
+        # Cập nhật số sinh viên trong vùng bán kính
         count_text.set_text(f'Students in range: {count_in_range}')
-        print(count_in_range)
-        return scatter_students, *circles
+        print(f"Iteration {frame}: {count_in_range} students in range")
 
-    ani = animation.FuncAnimation(fig, update, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=True, repeat=False)
+        return scatter_students
+
+    # Animation cho quá trình cập nhật vị trí của reader
+    #ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
+
+    # Animation cho quá trình cập nhật vị trí của student
+    ani_student = animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
+
     plt.show()
 
 class Students:
@@ -116,10 +127,28 @@ class Readers:
     def update_position(self):
         self.position += self.velocity
 
-def fitness(position):
-    epsilon = 1e-100
-    fitness = 1/(schwefel(position) + epsilon)
-    return fitness
+def fitness(READERS, STUDENTS):
+    student_positions = np.array([student.position for student in STUDENTS])
+    reader_positions = np.array([reader.position for reader in READERS])
+
+    # Tính số sinh viên trong vùng phủ sóng của ít nhất một đầu đọc
+    covered_students = 0
+    for student in student_positions:
+        if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
+            covered_students += 1
+
+    # Tính khoảng cách giữa các đầu đọc để giảm trùng lặp
+    overlap_penalty = 0
+    for i, reader1 in enumerate(reader_positions):
+        for j, reader2 in enumerate(reader_positions):
+            if i != j:
+                distance = np.linalg.norm(reader1 - reader2)
+                if distance < 2 * RFID_RADIUS:
+                    overlap_penalty += (2 * RFID_RADIUS - distance)  # Phạt nếu khoảng cách nhỏ hơn 2 lần bán kính
+
+    # Giá trị fitness bao gồm độ phủ và trùng lặp
+    fitness_value = covered_students - ALPHA * overlap_penalty
+    return fitness_value
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter, alpha=0.5):
         self.num_particles = num_particles
@@ -130,25 +159,28 @@ class SSPSO:
         self.global_best_position = np.random.uniform(-1, 1, dim)
         self.global_best_value = float('inf')
 
-    def optimize(self):
+    def optimize(self, STUDENTS):
         for _ in range(self.max_iter):
             for particle in self.readers:
-                # Đánh giá hàm mục tiêu
-                fitness_value = fitness(particle.position)
+                # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
+                fitness_value = fitness(self.readers, STUDENTS)
+                
                 # Cập nhật vị trí tốt nhất của từng hạt
-                if fitness_value < particle.best_value:
+                if fitness_value > particle.best_value:  # Tối đa hóa
                     particle.best_position = particle.position.copy()
                     particle.best_value = fitness_value
+
                 # Cập nhật vị trí tốt nhất của toàn bộ quần thể
-                if fitness_value < self.global_best_value:
+                if fitness_value > self.global_best_value:  # Tối đa hóa
                     self.global_best_position = particle.position.copy()
                     self.global_best_value = fitness_value
+            
             # Cập nhật vận tốc và vị trí của mỗi hạt
             for particle in self.readers:
                 particle.update_velocity(self.global_best_position)
                 particle.update_position()
-        final_positions = np.array([readers.position for readers in self.readers])
-        return final_positions
+        
+        return self.readers
         
             
 
@@ -156,3 +188,6 @@ class SSPSO:
 readers =  [Readers(DIM) for _ in range(NUM_RFID_READERS)]
 students = [Students(DIM) for _ in range(NUM_INDIVIDUALS)]
 BieuDo(readers, students)
+
+
+

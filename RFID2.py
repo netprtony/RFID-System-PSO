@@ -34,6 +34,35 @@ def calculate_inertia_weight(w_max, w_min, iter, iter_max):
     """
     w = w_max - ((w_max - w_min) / iter_max) * iter
     return w
+def calculate_covered_students(students, readers, rfid_radius = 3.69):
+    """
+    Tính số sinh viên được bao phủ bởi ít nhất một đầu đọc RFID.
+    
+    Parameters:
+    - students: Danh sách các đối tượng sinh viên (vị trí của sinh viên)
+    - readers: Danh sách các đối tượng đầu đọc (vị trí của đầu đọc)
+    - rfid_radius: Bán kính bao phủ của mỗi đầu đọc RFID
+    
+    Returns:
+    - Số lượng sinh viên được bao phủ
+    """
+    covered_students = 0
+    
+    for student in students:
+        student_covered = False  # Giả định ban đầu sinh viên không được bao phủ
+        
+        for reader in readers:
+            distance = np.linalg.norm(student.position - reader.position)
+            
+            # Kiểm tra xem sinh viên có nằm trong vùng bán kính của đầu đọc nào không
+            if distance <= rfid_radius:
+                student_covered = True
+                break  # Dừng kiểm tra nếu sinh viên đã được bao phủ bởi ít nhất một đầu đọc
+        
+        if student_covered:
+            covered_students += 1
+    
+    return covered_students
 
 def BieuDo(READERS, STUDENTS):
     fig, ax = plt.subplots()
@@ -74,7 +103,7 @@ def BieuDo(READERS, STUDENTS):
         for i, circle in enumerate(circles):
             circle.center = reader_positions[i]
 
-        coverage_ratio = fitness(READERS, STUDENTS)
+        coverage_ratio = calculate_covered_students(READERS, STUDENTS)
         print(f"Iteration {frame}: Coverage Ratio = {coverage_ratio * 100:.2f}% ({coverage_ratio:.4f})")
         if coverage_ratio == 1.0:
             print(f"All tags are covered at iteration. Stopping the optimization.")
@@ -108,7 +137,7 @@ def BieuDo(READERS, STUDENTS):
         return scatter_students
 
     # Animation cho quá trình cập nhật vị trí của reader
-    #ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
+    ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
 
     # Animation cho quá trình cập nhật vị trí của student
     ani_student = animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
@@ -144,28 +173,32 @@ class Readers:
     def update_position(self):
         self.position += self.velocity
 
-def fitness(READERS, STUDENTS):
-    student_positions = np.array([student.position for student in STUDENTS])
-    #reader_positions = np.array([reader.position for reader in READERS])
 
-    # Tính số sinh viên trong vùng phủ sóng của ít nhất một đầu đọc
-    covered_students = 0
-    for student in student_positions:
-        if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
-            covered_students += 1
-
-    # Tính khoảng cách giữa các đầu đọc để giảm trùng lặp
-    # overlap_penalty = 0
-    # for i, reader1 in enumerate(reader_positions):
-    #     for j, reader2 in enumerate(reader_positions):
-    #         if i != j:
-    #             distance = np.linalg.norm(reader1 - reader2)
-    #             if distance < 2 * RFID_RADIUS:
-    #                 overlap_penalty += (2 * RFID_RADIUS - distance)  # Phạt nếu khoảng cách nhỏ hơn 2 lần bán kính
-
-    # Giá trị fitness bao gồm độ phủ và trùng lặp
-    fitness_value = covered_students #- ALPHA * overlap_penalty
+def fitness(students_covered, total_students, overlap_points):
+    """
+    Tính toán fitness của một particle dựa trên số học sinh bao phủ, số reader sử dụng, và diện tích trùng lặp.
+    
+    Parameters:
+    - students_covered: Số học sinh được bao phủ bởi các đầu đọc
+    - total_students: Tổng số học sinh trong vùng
+    - total_readers: Tổng số đầu đọc có thể đặt trong vùng
+    - overlap_points: Số điểm trùng lặp (số học sinh bị nhiều đầu đọc bao phủ)
+    
+    Returns:
+    - Giá trị fitness của particle
+    """
+    # X = c / T: Tỷ lệ số item được bao phủ
+    X = students_covered / total_students
+    
+    # Y = (N - n) / N: Tỷ lệ giảm của số đầu đọc được sử dụng
+    #Y = (total_readers - readers_used) / total_readers
+    
+    # Z = (T - e) / T: Tỷ lệ giảm của số điểm bị bao phủ bởi nhiều đầu đọc
+    Z = (total_students - overlap_points) / total_students
+    # Hàm fitness: 0.6 * X + 0.2 * Y + 0.2 * Z
+    fitness_value = 0.6 * X  + 0.2 * Z
     return fitness_value
+
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter, alpha=0.5, w_max=0.9, w_min=0.4):
         self.num_particles = num_particles
@@ -184,7 +217,7 @@ class SSPSO:
             w = calculate_inertia_weight(self.w_max, self.w_min, iter, self.max_iter)
             for particle in self.readers:
                 # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
-                fitness_value = fitness(self.readers, STUDENTS)
+                fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), len(self.readers), )
                 
                 # Cập nhật vị trí tốt nhất của từng hạt
                 if fitness_value > particle.best_value:  # Tối đa hóa

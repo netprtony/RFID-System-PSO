@@ -2,9 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 #import csv
 import matplotlib.animation as animation
-GRID_X, GRID_Y = 50, 50 # Kích thước của 1 lớp học
-NUM_INDIVIDUALS = 100 # Sô lượng sinh viên
-NUM_RFID_READERS = 50  # Số lượng đầu đọc RFID
+GRID_X, GRID_Y = 25, 25 # Kích thước của 1 lớp học
+NUM_INDIVIDUALS = 250 # Sô lượng sinh viên
+NUM_RFID_READERS = 20  # Số lượng đầu đọc RFID
 NUM_ITERATION = 50  # Số vòng lặp
 RFID_RADIUS = 3.69 # Bán kính vùng phủ sóng của đầu đọc
 DIM = 2
@@ -62,7 +62,7 @@ def calculate_covered_students(students, readers, rfid_radius = 3.69):
         if student_covered:
             covered_students += 1
     
-    return covered_students
+    return covered_students/sum(students)
 def calculate_overlap_points(students, readers, RFID_RADIUS=3.69):
     """
     Tính số điểm trùng lặp (số sinh viên được bao phủ bởi nhiều hơn một đầu đọc).
@@ -100,14 +100,10 @@ def BieuDoReader(READERS, STUDENTS):
     ax.set_ylim(0, GRID_Y)
     ax.set_aspect('equal', 'box')
 
-    # Tối ưu hóa bằng thuật toán PSO
-    sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION)
-    READERS = sspso.readers  # Khởi tạo readers từ SSPSO
-
     # Trích xuất vị trí sinh viên và đầu đọc RFID
     student_positions = np.array([student.position for student in STUDENTS])
     reader_positions = np.array([reader.position for reader in READERS])
-
+    sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION)
     ax.scatter(student_positions[:, 0], student_positions[:, 1], color='blue', label='Students', s=10)
     scatter_rfid = ax.scatter(reader_positions[:, 0], reader_positions[:, 1], color='red', label='RFID Readers', marker='^')
 
@@ -118,34 +114,56 @@ def BieuDoReader(READERS, STUDENTS):
 
     # Text hiển thị số sinh viên trong vùng bán kính
     count_text = ax.text(0.02, 1.05, 'Students in range: 0', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    global_best_value = np.inf
+    max_no_change_iterations = 5  # Số lần không thay đổi tối đa trước khi dừng
+    no_change_counter = 0         # Bộ đếm cho số lần không thay đổi liên tiếp
+    previous_gbest_value = global_best_value  # Biến lưu giá trị của gbest từ lần chạy trước
+    
     # Hàm cập nhật vị trí của các reader
     def update_reader(frame):
-        reader_positions = sspso.optimize(STUDENTS)  # Chạy từng vòng lặp tối ưu cho mỗi frame
-        # Cập nhật vị trí của các đầu đọc RFID
-        scatter_rfid.set_offsets(reader_positions)
+        global global_best_value, previous_gbest_value
         count_in_range = 0
         for student in student_positions:
             if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
-                count_in_range += 1
-
-        # Cập nhật vị trí của các hình tròn vùng phủ sóng
-        for i, circle in enumerate(circles):
-            circle.center = reader_positions[i]
+                count_in_range += 1  
+       
 
         coverage_ratio = calculate_covered_students(READERS, STUDENTS)
-        print(f"Iteration {frame}: Coverage Ratio = {coverage_ratio * 100:.2f}% ({coverage_ratio:.4f})")
+        print(f"Iteration {frame}: Coverage Ratio = {coverage_ratio * 100:f}({coverage_ratio:.4f})")
+        
         if coverage_ratio == 1.0:
             print(f"All tags are covered at iteration. Stopping the optimization.")
             return
+        
+
         count_text.set_text(f'Students in range: {count_in_range}')
         print(f"Iteration {frame}: {count_in_range} students in range")
+
+        global_best_position, global_best_value = sspso.optimize(STUDENTS)
+        if global_best_value == previous_gbest_value:
+            no_change_counter += 1  # Tăng bộ đếm nếu gbest_score không thay đổi
+        else:
+            no_change_counter = 0   # Reset bộ đếm nếu có thay đổi
+            previous_gbest_value = global_best_value  # Cập nhật gbest_score mới nhất
+       
+        # Dừng vòng lặp nếu qua 5 lần không có sự thay đổi
+        if no_change_counter >= max_no_change_iterations:
+            print(f"Stopping early after iterations due to no change in objective function.")    
+
+        for reader in READERS:
+            w = calculate_inertia_weight(0.9 ,0.4, frame, NUM_ITERATION)
+            reader.update_velocity(global_best_position, w)
+            reader.update_position()
+
+         # Cập nhật vị trí của các đầu đọc RFID
+        reader_positions = np.array([reader.position for reader in READERS])
+        scatter_rfid.set_offsets(reader_positions)
+         # Cập nhật vị trí của các hình tròn vùng phủ sóng
+        for i, circle in enumerate(circles):
+            circle.center = reader_positions[i]
         return scatter_rfid, *circles
     # Animation cho quá trình cập nhật vị trí của reader
     ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
-
-    # Animation cho quá trình cập nhật vị trí của student
-    #ani_student = animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
-
     plt.show()
 def BieuDoStudents(READERS, STUDENTS):
     fig, ax = plt.subplots()
@@ -190,7 +208,7 @@ def BieuDoStudents(READERS, STUDENTS):
 
         return scatter_student
     # Animation cho quá trình cập nhật vị trí của student
-    animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
+    ain = animation.FuncAnimation(fig, update_student, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
     plt.show()
 class Students:
     def __init__(self, dim):
@@ -250,21 +268,16 @@ def fitness(students_covered, total_students, overlap_points):
     return fitness_value
 
 class SSPSO:
-    def __init__(self, num_particles, dim, max_iter, alpha=0.5, w_max=0.9, w_min=0.4):
+    def __init__(self, num_particles, dim, max_iter):
         self.num_particles = num_particles
         self.dim = dim
-        self.alpha = alpha
         self.max_iter = max_iter
         self.readers = [Readers(dim) for _ in range(num_particles)]
         self.global_best_position = np.random.uniform(-1, 1, dim)
         self.global_best_value = float('inf')
-        self.w_max = w_max  # Giá trị w_max
-        self.w_min = w_min  # Giá trị w_min
 
     def optimize(self, STUDENTS):
-        for iter in range(self.max_iter):
-            # Tính toán hệ số quán tính (w)
-            w = calculate_inertia_weight(self.w_max, self.w_min, iter, self.max_iter)
+        for _ in range(self.max_iter):
             for particle in self.readers:
                 # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
                 fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), calculate_overlap_points(self.readers, STUDENTS))
@@ -277,14 +290,8 @@ class SSPSO:
                 # Cập nhật vị trí tốt nhất của toàn bộ quần thể
                 if fitness_value > self.global_best_value:  # Tối đa hóa
                     self.global_best_position = particle.position.copy()
-                    self.global_best_value = fitness_value
-            
-            # Cập nhật vận tốc và vị trí của mỗi hạt
-            for particle in self.readers:
-                particle.update_velocity(self.global_best_position, w)
-                particle.update_position()
-        
-        return self.readers
+                    self.global_best_value = fitness_value      
+        return self.global_best_position, self.global_best_value
         
             
 

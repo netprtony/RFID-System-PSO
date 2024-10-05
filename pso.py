@@ -1,100 +1,94 @@
-import numpy as np
-import matplotlib.pyplot as plt
+from random import random
+import math
 
-def covered_ratio(rfid_readers, individuals):
-    total_tags = len(individuals)
-    covered_count = 0
-    # Duyệt qua từng cá thể và kiểm tra nếu chúng nằm trong bán kính của bất kỳ đầu đọc nào
-    for individual in individuals:
-        if any(np.linalg.norm(individual - reader) <= RFID_RADIUS for reader in rfid_readers):
-            covered_count += 1
-    # Tính tỷ lệ phủ sóng
-    coverage_ratio = covered_count / total_tags
-    return coverage_ratio
+def fitFunc(xVals):
+    fitness = 10*len(xVals)
+    for i in range(len(xVals)):
+        fitness += xVals[i]**2 - (10*math.cos(2*math.pi*xVals[i]))
+    return fitness
 
-def objective_function(position):
-    return 1 / (1 + np.sum(position**2))
+def initPosition(Np, Nd, xMin, xMax):
+    R = [[xMin + random()*(xMax-xMin) for i in range(0, Nd)] for p in range(0, Np)]
 
-def BieuDo(READERS):
-    # Khởi tạo biểu đồ
-    fig, ax = plt.subplots()
-    ax.set_xlabel('X Coordinate')
-    ax.set_ylabel('Y Coordinate')
-    ax.set_xlim(0, GRID_X)  
-    ax.set_ylim(0, GRID_Y)  
-    ax.set_aspect('equal', 'box')
+    return R
 
-    # Vẽ các cá thể
-    ax.scatter(INDIVIDUALS[:, 0], INDIVIDUALS[:, 1], color='blue', label='Individuals')
-    # Các danh sách để theo dõi các điểm cần vẽ
+def updatePosition(R, Np, Nd, xMin, xMax):
 
-    scatter_rfid = ax.scatter(READERS[:, 0], READERS[:, 1], color='red', label='RFID Readers')
-    circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in READERS]
-    for circle in circles:
-        ax.add_artist(circle)
-    plt.show()
-# Lớp đại diện cho mỗi hạt trong PSO
-class Particle:
-    def __init__(self, dim):
-        self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
-        self.velocity = np.zeros(dim)
-        self.best_position = self.position.copy()
-        self.best_value = float('inf')
+     for p in range(0, Np):
+        for i in range(0, Nd):
 
-    def update_velocity(self, global_best_position, w=0.5, c1=1.5, c2=1.5):
-        r1 = np.random.rand(len(self.position))
-        r2 = np.random.rand(len(self.position))
-        cognitive_component = c1 * r1 * (self.best_position - self.position)
-        social_component = c2 * r2 * (global_best_position - self.position)
-        self.velocity = w * self.velocity + cognitive_component + social_component
+            R[p][i] = R[p][i] + V[p][i]
 
-    def update_position(self):
-        self.position += self.velocity
+            if R[p][i] > xMax: R[p][i] = xMax
+            if R[p][i] < xMin: R[p][i] = xMin
 
-class SSPSO:
-    def __init__(self, num_particles, dim, max_iter, alpha=0.5):
-        self.num_particles = num_particles
-        self.dim = dim
-        self.alpha = alpha
-        self.max_iter = max_iter
-        self.particles = [Particle(dim) for _ in range(num_particles)]
-        self.global_best_position = np.random.uniform(-1, 1, dim)
-        self.global_best_value = float('inf')
-        self.history = []
+def initVelocity(Np, Nd, vMin, vMax):
+    V =[[vMin + random()*(vMax-vMin) for i in range(0,Nd)] for p in range(0, Np)]
 
-    def optimize(self):
-        for _ in range(self.max_iter):
-            for particle in self.particles:
-                # Đánh giá hàm mục tiêu
-                fitness_value = objective_function(particle.position)
-                # Cập nhật vị trí tốt nhất của từng hạt
-                if fitness_value < particle.best_value:
-                    particle.best_position = particle.position.copy()
-                    particle.best_value = fitness_value
-                # Cập nhật vị trí tốt nhất của toàn bộ quần thể
-                if fitness_value < self.global_best_value:
-                    self.global_best_position = particle.position.copy()
-                    self.global_best_value = fitness_value
-            # Cập nhật vận tốc và vị trí của mỗi hạt
-            for particle in self.particles:
-                particle.update_velocity(self.global_best_position)
-                particle.update_position()
-            # Ghi lại giá trị tốt nhất tại mỗi vòng lặp
-            self.history.append(self.global_best_value)
-        # Trả về vị trí của từng hạt và vị trí tốt nhất toàn bộ quần thể
-        final_positions = np.array([particle.position for particle in self.particles])
-        return final_positions
+    return V
+
+def updateVelocity(R, V, Np, Nd, j, c1, c2, w, vMin, vMax, chi, pBestPos, gBestPos):
     
-GRID_X, GRID_Y = 100, 100 # Kích thước của 1 lớp học
-NUM_INDIVIDUALS = 50 # Sô lượng sinh viên
-NUM_RFID_READERS = 3  # Số lượng đầu đọc RFID
-INDIVIDUALS = np.random.rand(NUM_INDIVIDUALS, 2) * [GRID_X, GRID_Y]
-NUM_ITERATION = 200  # Số vòng lặp
-RFID_RADIUS = 3.69 # Bán kính vùng phủ sóng của đầu đọc
-DIM = 2
-ALPHA = 0.7
+    for p in range(0, Np):
+        for i in range(0, Nd):
 
-sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, ALPHA)
-final_positions = sspso.optimize()
-print(final_positions)
-BieuDo(final_positions)
+            r1 = random()
+            r2 = random()
+
+            V[p][i] = chi* (w * V[p][i] + r1*c1*(pBestPos[p][i]-R[p][i]) 
+                                        + r2*c2*(gBestPos[i]   -R[p][i]))
+
+            if V[p][i] > vMax: V[p][i] = vMax
+            if V[p][i] < vMin: V[p][i] = vMin
+
+def updateFitness(R, M, Np, pBestPos, pBestVal, gBestPos, gBestVal):
+
+    for p in range(0, Np):
+        M[p] = fitFunc(R[p])
+
+        if M[p] < gBestVal:
+            gBestVal = M[p]
+            gBestPos   = R[p]
+
+        if M[p] < pBestVal[p]:
+            pBestVal[p] = M[p]
+            pBestPos[p]   = R[p]
+
+    return gBestVal
+
+if __name__ == "__main__":
+
+    Np, Nd, Nt    = 50, 20, 100
+    c1, c2        = 2.05, 2.05
+    w, wMin, wMax = 0.0, 0.4, 0.9 
+
+    phi = c1+c2
+    chi = 2.0/abs(2.0-phi-math.sqrt(pow(phi, 2)-4*phi))
+
+    xMin, xMax = -5.12, 5.12
+    vMin, vMax = 0.25*xMin, 0.25*xMax
+    
+    gBestValue = float("inf")
+    pBestValue = [float("inf")] * Np
+
+    pBestPos   = [[0]*Nd] * Np
+    gBestPos   = [0] * Nd
+
+    history    = []
+    
+    R = initPosition(Np, Nd, xMin, xMax)
+    V = initVelocity(Np, Nd, vMin, vMax)
+    M = [fitFunc(R[p]) for p in range(0, Np)]
+
+    for j in range(0, Nt):
+
+        updatePosition(R, Np, Nd, xMin, xMax)
+
+        gBestValue = updateFitness(R, M, Np, pBestPos, pBestValue, gBestPos, gBestValue)
+        history.append(gBestValue)
+        
+        w = wMax - ((wMax-wMin)/Nt)*j
+        updateVelocity(R, V, Np, Nd, j, c1, c2, w, vMin, vMax, chi, pBestPos, gBestPos)
+
+    for h in history:
+        print(h)

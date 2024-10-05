@@ -3,8 +3,8 @@ import matplotlib.pyplot as plt
 #import csv
 import matplotlib.animation as animation
 GRID_X, GRID_Y = 25, 25 # Kích thước của 1 lớp học
-NUM_INDIVIDUALS = 250 # Sô lượng sinh viên
-NUM_RFID_READERS = 20  # Số lượng đầu đọc RFID
+NUM_INDIVIDUALS = 700 # Sô lượng sinh viên
+NUM_RFID_READERS = 35  # Số lượng đầu đọc RFID
 NUM_ITERATION = 50  # Số vòng lặp
 RFID_RADIUS = 3.69 # Bán kính vùng phủ sóng của đầu đọc
 DIM = 2
@@ -13,7 +13,83 @@ UPDATE_INTERVAL = 500
 MOVE_PERCENTAGE_MIN = 0.01  # Tỷ lệ di chuyển tối thiểu
 MOVE_PERCENTAGE_MAX = 0.02  # Tỷ lệ di chuyển tối đa
 
+def remove_unnecessary_readers(students, readers, rfid_radius=3.69, coverage_threshold=0.98):
+    """
+    Loại bỏ các đầu đọc không cần thiết mà vẫn đảm bảo độ bao phủ tối ưu.
+    
+    Parameters:
+    - students: Danh sách các sinh viên (vị trí của sinh viên)
+    - readers: Danh sách các đầu đọc (vị trí của đầu đọc)
+    - rfid_radius: Bán kính bao phủ của mỗi đầu đọc RFID
+    - coverage_threshold: Ngưỡng tối thiểu của độ bao phủ (tỷ lệ sinh viên được bao phủ chấp nhận được)
+
+    Returns:
+    - Danh sách các đầu đọc tối ưu sau khi loại bỏ các đầu đọc không cần thiết
+    """
+    # Tính tổng số sinh viên
+    total_students = len(students)
+    
+    # Bắt đầu từ tất cả các đầu đọc
+    optimal_readers = readers.copy()
+    
+    # Tính độ bao phủ ban đầu
+    initial_coverage = calculate_covered_students(students, optimal_readers, rfid_radius)
+    print(f"Initial coverage: {initial_coverage * 100:.2f}%")
+    
+    # Kiểm tra từng đầu đọc để xem có thể loại bỏ được không
+    for reader in readers:
+        # Tạm thời loại bỏ đầu đọc này
+        temp_readers = [r for r in optimal_readers if r != reader]
+        
+        # Tính độ bao phủ sau khi loại bỏ đầu đọc
+        new_coverage = calculate_covered_students(students, temp_readers, RFID_RADIUS)
+        
+        # Nếu độ bao phủ sau khi loại bỏ đầu đọc vẫn trên ngưỡng cho phép, thì loại bỏ đầu đọc
+        if new_coverage >= coverage_threshold * initial_coverage:
+            print(f"Removing reader at {reader.position} - New coverage: {new_coverage * 100:.2f}%")
+            optimal_readers = temp_readers
+        else:
+            print(f"Keeping reader at {reader.position} - Coverage would drop to {new_coverage * 100:.2f}%")
+    
+    return optimal_readers
 # Hàm để kiểm tra khoảng cách giữa hai điểm
+def optimize_rfid_placement_with_removal(students, initial_readers, max_iterations=100, rfid_radius=3.69, coverage_threshold=0.98):
+    """
+    Thuật toán tối ưu hóa với loại bỏ các đầu đọc không cần thiết để tối ưu độ bao phủ.
+    
+    Parameters:
+    - students: Danh sách các sinh viên
+    - initial_readers: Danh sách các đầu đọc ban đầu
+    - max_iterations: Số lần lặp tối đa của thuật toán tối ưu hóa
+    - rfid_radius: Bán kính bao phủ của mỗi đầu đọc
+    - coverage_threshold: Ngưỡng tối thiểu của độ bao phủ
+    
+    Returns:
+    - optimal_readers: Danh sách đầu đọc tối ưu
+    """
+    # Bắt đầu với tập đầu đọc ban đầu
+    readers = initial_readers.copy()
+    
+    for iteration in range(max_iterations):
+        print(f"Iteration {iteration + 1}/{max_iterations}")
+        
+        # Chạy một bước của thuật toán tối ưu (ví dụ: tối ưu hóa bầy đàn PSO hoặc thuật toán khác)
+        # Tại đây bạn có thể thêm quá trình cải thiện hoặc tối ưu thêm vị trí của các đầu đọc
+        
+        # Sau mỗi vài vòng lặp (ví dụ 10), loại bỏ các đầu đọc không cần thiết
+        if iteration % 10 == 0:
+            readers = remove_unnecessary_readers(students, readers, rfid_radius, coverage_threshold)
+        
+        # In kết quả độ bao phủ hiện tại
+        coverage = calculate_covered_students(students, readers, rfid_radius)
+        print(f"Coverage after iteration {iteration + 1}: {coverage * 100:.2f}%")
+        
+        # Nếu độ bao phủ đạt yêu cầu, có thể dừng sớm
+        if coverage >= coverage_threshold:
+            break
+    
+    # Trả về danh sách các đầu đọc tối ưu
+    return readers
 def is_valid_distance(new_point, points, min_distance):
     for point in points:
         if np.linalg.norm(new_point - point) < min_distance:
@@ -62,7 +138,7 @@ def calculate_covered_students(students, readers, rfid_radius = 3.69):
         if student_covered:
             covered_students += 1
     
-    return covered_students/sum(students)
+    return covered_students/len(students)
 def calculate_overlap_points(students, readers, RFID_RADIUS=3.69):
     """
     Tính số điểm trùng lặp (số sinh viên được bao phủ bởi nhiều hơn một đầu đọc).
@@ -114,37 +190,27 @@ def BieuDoReader(READERS, STUDENTS):
 
     # Text hiển thị số sinh viên trong vùng bán kính
     count_text = ax.text(0.02, 1.05, 'Students in range: 0', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    global_best_value = np.inf
     max_no_change_iterations = 5  # Số lần không thay đổi tối đa trước khi dừng
     no_change_counter = 0         # Bộ đếm cho số lần không thay đổi liên tiếp
-    previous_gbest_value = global_best_value  # Biến lưu giá trị của gbest từ lần chạy trước
+    previous_gbest_value = sspso.global_best_value  # Biến lưu giá trị của gbest từ lần chạy trước
     
     # Hàm cập nhật vị trí của các reader
     def update_reader(frame):
-        global global_best_value, previous_gbest_value
+        global previous_gbest_value
         count_in_range = 0
         for student in student_positions:
             if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
                 count_in_range += 1  
-       
-
-        coverage_ratio = calculate_covered_students(READERS, STUDENTS)
-        print(f"Iteration {frame}: Coverage Ratio = {coverage_ratio * 100:f}({coverage_ratio:.4f})")
-        
-        if coverage_ratio == 1.0:
-            print(f"All tags are covered at iteration. Stopping the optimization.")
-            return
-        
 
         count_text.set_text(f'Students in range: {count_in_range}')
         print(f"Iteration {frame}: {count_in_range} students in range")
 
-        global_best_position, global_best_value = sspso.optimize(STUDENTS)
-        if global_best_value == previous_gbest_value:
+        sspso.optimize(STUDENTS)
+        if  sspso.global_best_value == previous_gbest_value:
             no_change_counter += 1  # Tăng bộ đếm nếu gbest_score không thay đổi
         else:
             no_change_counter = 0   # Reset bộ đếm nếu có thay đổi
-            previous_gbest_value = global_best_value  # Cập nhật gbest_score mới nhất
+            previous_gbest_value = sspso.global_best_value  # Cập nhật gbest_score mới nhất
        
         # Dừng vòng lặp nếu qua 5 lần không có sự thay đổi
         if no_change_counter >= max_no_change_iterations:
@@ -152,15 +218,18 @@ def BieuDoReader(READERS, STUDENTS):
 
         for reader in READERS:
             w = calculate_inertia_weight(0.9 ,0.4, frame, NUM_ITERATION)
-            reader.update_velocity(global_best_position, w)
+            reader.update_velocity(sspso.global_best_position, w)
             reader.update_position()
-
-         # Cập nhật vị trí của các đầu đọc RFID
+        
+        # Cập nhật vị trí của các đầu đọc RFID
         reader_positions = np.array([reader.position for reader in READERS])
+        
         scatter_rfid.set_offsets(reader_positions)
+        
          # Cập nhật vị trí của các hình tròn vùng phủ sóng
         for i, circle in enumerate(circles):
             circle.center = reader_positions[i]
+
         return scatter_rfid, *circles
     # Animation cho quá trình cập nhật vị trí của reader
     ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
@@ -244,7 +313,7 @@ class Readers:
         self.position += self.velocity
 
 
-def fitness(students_covered, total_students, overlap_points):
+def fitness(students_covered, total_students, overlap_points, total_readers, readers_used):
     """
     Tính toán fitness của một particle dựa trên số học sinh bao phủ, số reader sử dụng, và diện tích trùng lặp.
     
@@ -260,11 +329,11 @@ def fitness(students_covered, total_students, overlap_points):
     # X = c / T: Tỷ lệ số item được bao phủ
     X = students_covered / total_students
     # Y = (N - n) / N: Tỷ lệ giảm của số đầu đọc được sử dụng
-    #Y = (total_readers - readers_used) / total_readers
+    Y = (total_readers - readers_used) / total_readers
     # Z = (T - e) / T: Tỷ lệ giảm của số điểm bị bao phủ bởi nhiều đầu đọc
     Z = (total_students - overlap_points) / total_students
     # Hàm fitness: 0.6 * X + 0.2 * Y + 0.2 * Z
-    fitness_value = 0.6 * X  + 0.2 * Z
+    fitness_value = 0.6 * X + 0.2 * Y  + 0.2 * Z
     return fitness_value
 
 class SSPSO:
@@ -280,7 +349,7 @@ class SSPSO:
         for _ in range(self.max_iter):
             for particle in self.readers:
                 # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
-                fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), calculate_overlap_points(self.readers, STUDENTS))
+                fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), calculate_overlap_points(self.readers, STUDENTS), self.num_particles, self.num_particles)
                 
                 # Cập nhật vị trí tốt nhất của từng hạt
                 if fitness_value > particle.best_value:  # Tối đa hóa
@@ -291,7 +360,7 @@ class SSPSO:
                 if fitness_value > self.global_best_value:  # Tối đa hóa
                     self.global_best_position = particle.position.copy()
                     self.global_best_value = fitness_value      
-        return self.global_best_position, self.global_best_value
+        
         
             
 

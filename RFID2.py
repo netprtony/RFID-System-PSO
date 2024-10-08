@@ -139,35 +139,45 @@ def calculate_covered_students(students, readers, rfid_radius = 3.69):
             covered_students += 1
     
     return covered_students/len(students)
-def calculate_overlap_points(students, readers, RFID_RADIUS=3.69):
+def calculate_overlap(students, readers, rfid_radius):
     """
-    Tính số điểm trùng lặp (số sinh viên được bao phủ bởi nhiều hơn một đầu đọc).
-
+    Tính độ trùng lắp giữa các đầu đọc RFID.
+    
     Parameters:
-    - students: Danh sách các đối tượng sinh viên
-    - readers: Danh sách các đối tượng đầu đọc RFID
-    - RFID_RADIUS: Bán kính vùng phủ sóng của mỗi đầu đọc
-
+    - students: Danh sách các điểm cần bao phủ (tọa độ sinh viên)
+    - readers: Danh sách tọa độ của các đầu đọc RFID
+    - rfid_radius: Bán kính phủ sóng của mỗi đầu đọc
+    
     Returns:
-    - Số lượng điểm trùng lặp
+    - overlap_percentage: Tỉ lệ trùng lắp giữa các đầu đọc
     """
-    overlap_count = 0  # Đếm số lượng sinh viên nằm trong vùng trùng lặp
+    total_students_covered = set()  # Set để lưu tất cả sinh viên được bao phủ ít nhất một lần
+    overlapping_students = set()  # Set để lưu các sinh viên bị bao phủ bởi nhiều hơn 1 đầu đọc
 
+    # Duyệt qua từng sinh viên để kiểm tra xem có được bao phủ bởi nhiều đầu đọc không
     for student in students:
-        covered_by = 0  # Đếm số đầu đọc bao phủ sinh viên này
-        student_pos = student.position
-
+        readers_covering_student = 0
+        
+        # Duyệt qua từng đầu đọc để xem nó có bao phủ sinh viên này không
         for reader in readers:
-            reader_pos = reader.position
-            distance = np.linalg.norm(student_pos - reader_pos)
+            if calculate_distance(student, reader) <= rfid_radius:
+                readers_covering_student += 1
+        
+        # Nếu có ít nhất 1 đầu đọc bao phủ, thêm vào danh sách sinh viên được bao phủ
+        if readers_covering_student > 0:
+            total_students_covered.add(student)
+        
+        # Nếu có nhiều hơn 1 đầu đọc bao phủ, thêm vào danh sách sinh viên bị trùng lắp
+        if readers_covering_student > 1:
+            overlapping_students.add(student)
 
-            if distance <= RFID_RADIUS:
-                covered_by += 1  # Sinh viên này được bao phủ bởi đầu đọc này
-
-        if covered_by > 1:
-            overlap_count += 1  # Sinh viên này nằm trong vùng trùng lặp
-
-    return overlap_count
+    # Tính tỉ lệ trùng lắp (số lượng sinh viên trùng lắp trên tổng số sinh viên được bao phủ)
+    if len(total_students_covered) == 0:
+        overlap_percentage = 0.0  # Tránh chia cho 0
+    else:
+        overlap_percentage = len(overlapping_students) / len(total_students_covered)
+    
+    return overlap_percentage
 def BieuDoReader(READERS, STUDENTS):
     fig, ax = plt.subplots()
     ax.set_xlabel('X Coordinate')

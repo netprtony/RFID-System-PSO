@@ -210,7 +210,7 @@ class Students:
     def __init__(self, dim):
         self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
         self.id = np.random.randint(2001210000, 2001220000)
-       
+        self.covered = False
 
     def update_position(self):
         move_distance = np.random.uniform(MOVE_PERCENTAGE_MIN * GRID_X, MOVE_PERCENTAGE_MAX * GRID_X)

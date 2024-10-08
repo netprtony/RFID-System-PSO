@@ -359,7 +359,7 @@ class SSPSO:
         for _ in range(self.max_iter):
             for particle in self.readers:
                 # Đánh giá hàm mục tiêu dựa trên độ phủ và trùng lặp
-                fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), calculate_overlap_points(self.readers, STUDENTS), self.num_particles, self.num_particles)
+                fitness_value = fitness(calculate_covered_students(self.readers, STUDENTS), len(STUDENTS), calculate_overlap(self.readers, STUDENTS, RFID_RADIUS), self.num_particles, self.num_particles)
                 
                 # Cập nhật vị trí tốt nhất của từng hạt
                 if fitness_value > particle.best_value:  # Tối đa hóa

@@ -65,10 +65,10 @@ class SSPSO:
                     self.global_best_position = reader.position.copy()
                     self.global_best_value = fitness_value
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
-                reader.update_velocity(self.global_best_position.global_best_position, w)
+                reader.update_velocity(self.global_best_position, w)
                 reader.update_position()
                 
-            # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
-            self.readers = tentative_reader_elimination(self.readers, STUDENTS, 
-                                                    coverage_function=calculate_coverage,
-                                                    max_recover_generations=5)   
+            # # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
+            # self.readers = tentative_reader_elimination(self.readers, STUDENTS, 
+            #                                         coverage_function=calculate_coverage,
+            #                                         max_recover_generations=5)   

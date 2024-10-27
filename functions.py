@@ -10,8 +10,6 @@ UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 DIM = 2
 
-def calculate_inertia_weight(w_max, w_min, iter, iter_max):
-    return w_max - ((w_max - w_min) / iter_max) * iter
 
 def BieuDoStudents(READERS, STUDENTS):
     fig, ax = plt.subplots()
@@ -82,17 +80,18 @@ def BieuDoReader(READERS, STUDENTS):
     previous_gbest_value = sspso.global_best_value  # Biến lưu giá trị của gbest từ lần chạy trước
     
     # Hàm cập nhật vị trí của các reader
-    def update_reader(frame):
-        global previous_gbest_value
+    for i in range(NUM_ITERATION):
+
         count_in_range = 0
         for student in student_positions:
             if any(np.linalg.norm(student - reader.position) <= RFID_RADIUS for reader in READERS):
                 count_in_range += 1  
 
         count_text.set_text(f'Students in range: {count_in_range}')
-        print(f"Iteration {frame}: {count_in_range} students in range")
+        print(f"Iteration {i}: {count_in_range} students in range")
 
-        sspso.optimize(STUDENTS, RFID_RADIUS)
+        sspso.optimize(READERS, STUDENTS, RFID_RADIUS)
+        
         if  sspso.global_best_value == previous_gbest_value:
             no_change_counter += 1  # Tăng bộ đếm nếu gbest_score không thay đổi
         else:
@@ -104,7 +103,7 @@ def BieuDoReader(READERS, STUDENTS):
             print(f"Stopping early after iterations due to no change in objective function.")    
 
         for reader in READERS:
-            w = calculate_inertia_weight(0.9 ,0.4, frame, NUM_ITERATION)
+            w = calculate_inertia_weight(0.9 ,0.4, i, NUM_ITERATION)
             reader.update_velocity(sspso.global_best_position, w)
             reader.update_position()
         
@@ -116,8 +115,6 @@ def BieuDoReader(READERS, STUDENTS):
          # Cập nhật vị trí của các hình tròn vùng phủ sóng
         for i, circle in enumerate(circles):
             circle.center = reader_positions[i]
-
+        plt.show()
         return scatter_rfid, *circles
-    # Animation cho quá trình cập nhật vị trí của reader
-    ani_reader = animation.FuncAnimation(fig, update_reader, frames=NUM_ITERATION, interval=UPDATE_INTERVAL, blit=False, repeat=False)
-    plt.show()
+    

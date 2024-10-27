@@ -1,6 +1,5 @@
 import numpy as np
-from utils import fitness, calculate_covered_students, calculate_overlap, fitness_function_basic, calculate_interference_basic, tentative_reader_elimination, calculate_coverage  # Import from utils.py
-
+from utils import fitness, calculate_covered_students, calculate_overlap, fitness_function_basic, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight  # Import from utils.py
 GRID_X, GRID_Y = 25, 25  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
@@ -46,7 +45,7 @@ class SSPSO:
         self.global_best_value = float('inf')
 
     def optimize(self, STUDENTS, RFID_RADIUS):
-        for _ in range(self.max_iter):
+        for i in range(self.max_iter):
             for reader in self.readers:
                 
                 # Tính toán số thẻ được phủ sóng
@@ -65,7 +64,10 @@ class SSPSO:
                 if fitness_value > self.global_best_value:  # Cập nhật vị trí tốt nhất toàn cục
                     self.global_best_position = reader.position.copy()
                     self.global_best_value = fitness_value
-
+                w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
+                reader.update_velocity(self.global_best_position.global_best_position, w)
+                reader.update_position()
+                
             # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
             self.readers = tentative_reader_elimination(self.readers, STUDENTS, 
                                                     coverage_function=calculate_coverage,

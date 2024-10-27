@@ -1,6 +1,8 @@
 import numpy as np
 
 RFID_RADIUS = 3.69
+def calculate_inertia_weight(w_max, w_min, iter, iter_max):
+    return w_max - ((w_max - w_min) / iter_max) * iter
 
 def calculate_covered_students(readers, students, rfid_radius=RFID_RADIUS):
     covered_students = 0

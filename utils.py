@@ -17,23 +17,23 @@ def calculate_covered_students(readers, students, rfid_radius=RFID_RADIUS):
             covered_students += 1
     return covered_students / len(students)
 
-def calculate_overlap(readers, students, rfid_radius=RFID_RADIUS):
-    total_students_covered = set()
-    overlapping_students = set()
+# def calculate_overlap(readers, students, rfid_radius=RFID_RADIUS):
+#     total_students_covered = set()
+#     overlapping_students = set()
 
-    for student in students:
-        readers_covering_student = 0
-        for reader in readers:
-            if np.linalg.norm(student.position - reader.position) <= rfid_radius:
-                readers_covering_student += 1
+#     for student in students:
+#         readers_covering_student = 0
+#         for reader in readers:
+#             if np.linalg.norm(student.position - reader.position) <= rfid_radius:
+#                 readers_covering_student += 1
 
-        if readers_covering_student > 0:
-            total_students_covered.add(student)
-        if readers_covering_student > 1:
-            overlapping_students.add(student)
+#         if readers_covering_student > 0:
+#             total_students_covered.add(student)
+#         if readers_covering_student > 1:
+#             overlapping_students.add(student)
 
-    overlap_percentage = len(overlapping_students) / len(total_students_covered) if total_students_covered else 0.0
-    return overlap_percentage
+#     overlap_percentage = len(overlapping_students) / len(total_students_covered) if total_students_covered else 0.0
+#     return overlap_percentage
 
 def calculate_interference_basic(readers, students, rfid_radius):
     """
@@ -101,7 +101,7 @@ def tentative_reader_elimination(readers, students, coverage_function, max_recov
     - readers: danh sách đầu đọc sau khi áp dụng TRE (có thể ít hơn hoặc giữ nguyên).
     """
     # Bước 1: Kiểm tra độ phủ sóng hiện tại (bắt buộc phải có độ phủ 100%)
-    full_coverage = coverage_function(readers, students)
+    full_coverage = coverage_function
     
     if not full_coverage:
         print("Không thể thực hiện TRE vì không có độ phủ sóng đầy đủ.")

@@ -1,5 +1,5 @@
 import numpy as np
-from utils import fitness, calculate_covered_students, calculate_overlap, fitness_function_basic, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight  # Import from utils.py
+from utils import fitness, calculate_covered_students, fitness_function_basic, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight  # Import from utils.py
 GRID_X, GRID_Y = 25, 25  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
@@ -68,7 +68,7 @@ class SSPSO:
                 reader.update_velocity(self.global_best_position, w)
                 reader.update_position()
                 
-            # # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
-            # self.readers = tentative_reader_elimination(self.readers, STUDENTS, 
-            #                                         coverage_function=calculate_coverage,
-            #                                         max_recover_generations=5)   
+            # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
+            self.readers = tentative_reader_elimination(self.readers, STUDENTS, 
+                                                    coverage_function=calculate_coverage(self.readers, STUDENTS, RFID_RADIUS),
+                                                    max_recover_generations=5)   

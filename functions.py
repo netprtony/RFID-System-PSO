@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from classes import SSPSO
 
-GRID_X, GRID_Y = 25, 25
+GRID_X, GRID_Y = 10, 10
 RFID_RADIUS = 3.69
 NUM_ITERATION = 50
 UPDATE_INTERVAL = 500

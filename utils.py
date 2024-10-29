@@ -1,61 +1,62 @@
 import numpy as np
-
+def distance(tag, reader):
+    return np.linalg.norm(tag.position - reader.position)
 RFID_RADIUS = 3.69
 def calculate_inertia_weight(w_max, w_min, iter, iter_max):
     return w_max - ((w_max - w_min) / iter_max) * iter
 
-def calculate_covered_students(readers, students, rfid_radius=RFID_RADIUS):
-    covered_students = 0
-    for student in students:
-        student_covered = False
+def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
+    covered_tags = 0
+    for tag in tags:
+        tag_covered = False
         for reader in readers:
-            distance = np.linalg.norm(student.position - reader.position)
-            if distance <= rfid_radius:
-                student_covered = True
+            dist = distance(tag, reader)
+            if dist <= rfid_radius:
+                tag_covered = True
                 break
-        if student_covered:
-            covered_students += 1
-    return covered_students / len(students)
+        if tag_covered:
+            covered_tags += 1
+    return covered_tags / len(tags)
 
-# def calculate_overlap(readers, students, rfid_radius=RFID_RADIUS):
-#     total_students_covered = set()
-#     overlapping_students = set()
+# def calculate_overlap(readers, tags, rfid_radius=RFID_RADIUS):
+#     total_tags_covered = set()
+#     overlapping_tags = set()
 
-#     for student in students:
-#         readers_covering_student = 0
+#     for tag in tags:
+#         readers_covering_tag = 0
 #         for reader in readers:
-#             if np.linalg.norm(student.position - reader.position) <= rfid_radius:
-#                 readers_covering_student += 1
+#             if distance(tag, reader) <= rfid_radius:
+#                 readers_covering_tag += 1
 
-#         if readers_covering_student > 0:
-#             total_students_covered.add(student)
-#         if readers_covering_student > 1:
-#             overlapping_students.add(student)
+#         if readers_covering_tag > 0:
+#             total_tags_covered.add(tag)
+#         if readers_covering_tag > 1:
+#             overlapping_tags.add(tag)
 
-#     overlap_percentage = len(overlapping_students) / len(total_students_covered) if total_students_covered else 0.0
+#     overlap_percentage = len(overlapping_tags) / len(total_tags_covered) if total_tags_covered else 0.0
 #     return overlap_percentage
 
-def calculate_interference_basic(readers, students, rfid_radius):
+def calculate_interference_basic(readers, tags, rfid_radius):
     """
     Tính toán nhiễu đơn giản, chỉ kiểm tra số lượng ăng-ten phủ sóng cho mỗi thẻ.
 
     Tham số:
     readers: Danh sách các ăng-ten (đối tượng Readers)
-    students: Danh sách các thẻ RFID (đối tượng Students)
+    tags: Danh sách các thẻ RFID (đối tượng tags)
     rfid_radius: Bán kính phủ sóng của mỗi ăng-ten
 
     Trả về:
     ITF: Giá trị nhiễu tổng cộng (số thẻ bị phủ bởi hơn 1 ăng-ten)
     """
     ITF = 0  # Tổng giá trị nhiễu
-    for student in students:  # Duyệt qua tất cả các thẻ
-        antennas_covering_student = sum(1 for reader in readers 
-                                        if np.linalg.norm(student.position - reader.position) <= rfid_radius)
-        if antennas_covering_student > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
-            ITF += (antennas_covering_student - 1)  # Mỗi ăng-ten dư gây nhiễu
+    for tag in tags:  # Duyệt qua tất cả các thẻ
+        antennas_covering_tag = sum(1 for reader in readers 
+                                        if distance(tag, reader) <= rfid_radius)
+        if antennas_covering_tag > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
+            ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF):
+def fitness_function_basic(COV, ITF): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -71,29 +72,31 @@ def fitness_function_basic(COV, ITF):
 
 
 
-def fitness(students_covered, total_students, overlap_points, total_readers, readers_used):
-    X = students_covered / total_students
+def fitness(tags_covered, total_tags, overlap_points, total_readers, readers_used):
+    X = tags_covered / total_tags
     Y = (total_readers - readers_used) / total_readers
-    Z = (total_students - overlap_points) / total_students
+    Z = (total_tags - overlap_points) / total_tags
     return 0.6 * X + 0.2 * Y + 0.2 * Z
 
-def calculate_coverage(readers, students, rfid_radius=RFID_RADIUS):
+def calculate_coverage(readers, tags, rfid_radius=RFID_RADIUS):
     """
     Tính toán độ phủ sóng dựa trên vị trí của các đầu đọc và thẻ RFID.
     """
-    for student in students:
-        covered = any(np.linalg.norm(student.position - reader.position) <= rfid_radius for reader in readers)
+    for tag in tags:
+        covered = any(distance(tag, reader) <= rfid_radius for reader in readers)
         if not covered:
             return False  # Có thẻ không được phủ sóng
     return True  # Tất cả thẻ đều được phủ sóng
 
-def tentative_reader_elimination(readers, students, coverage_function, max_recover_generations):
+
+
+def tentative_reader_elimination(readers, tags, coverage_function, max_recover_generations):
     """
     Hàm Tentative Reader Elimination (TRE)
 
     Parameters:
     - readers: danh sách đầu đọc hiện tại trong mạng, mỗi đầu đọc có thông tin về vị trí và công suất phát.
-    - students: danh sách các thẻ RFID trong khu vực, chứa thông tin về trạng thái phủ sóng của thẻ.
+    - tags: danh sách các thẻ RFID trong khu vực, chứa thông tin về trạng thái phủ sóng của thẻ.
     - coverage_function: hàm tính toán độ phủ sóng của mạng dựa trên đầu đọc và thẻ hiện tại.
     - max_recover_generations: số thế hệ tối đa để hệ thống khôi phục độ phủ sóng nếu giảm do loại bỏ đầu đọc.
 
@@ -117,14 +120,14 @@ def tentative_reader_elimination(readers, students, coverage_function, max_recov
 
     # Bước 3: Kiểm tra độ phủ sóng sau khi loại bỏ đầu đọc
     for generation in range(max_recover_generations):
-        full_coverage = coverage_function(readers, students)
+        full_coverage = coverage_function(readers, tags)
         
         if full_coverage:
             print(f"Đã khôi phục độ phủ sóng đầy đủ sau {generation + 1} thế hệ.")
             return readers  # Loại bỏ đầu đọc thành công
         
         # # Giả lập quá trình tối ưu hóa qua các thế hệ (nếu có)
-        # optimize_readers(readers, students)  # Hàm này có thể là quá trình tìm kiếm giải pháp
+        # optimize_readers(readers, tags)  # Hàm này có thể là quá trình tìm kiếm giải pháp
 
     # Nếu không thể đạt độ phủ đầy đủ, khôi phục đầu đọc đã loại bỏ
     readers.append(reader_to_remove)

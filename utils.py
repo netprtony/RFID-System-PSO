@@ -1,6 +1,6 @@
 import numpy as np
 def distance(tag, reader):
-    return np.linalg.norm(tag.position - reader.position)
+    return np.linalg.norm(tag - reader)
 RFID_RADIUS = 3.69
 def calculate_inertia_weight(w_max, w_min, iter, iter_max):
     return w_max - ((w_max - w_min) / iter_max) * iter
@@ -10,7 +10,7 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
     for tag in tags:
         tag_covered = False
         for reader in readers:
-            dist = distance(tag, reader)
+            dist = distance(tag.position, reader.position)
             if dist <= rfid_radius:
                 tag_covered = True
                 break
@@ -25,7 +25,7 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
 #     for tag in tags:
 #         readers_covering_tag = 0
 #         for reader in readers:
-#             if distance(tag, reader) <= rfid_radius:
+#             if distance(tag.position, reader.position) <= rfid_radius:
 #                 readers_covering_tag += 1
 
 #         if readers_covering_tag > 0:
@@ -51,7 +51,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
     ITF = 0  # Tổng giá trị nhiễu
     for tag in tags:  # Duyệt qua tất cả các thẻ
         antennas_covering_tag = sum(1 for reader in readers 
-                                        if distance(tag, reader) <= rfid_radius)
+                                        if distance(tag.position, reader.position) <= rfid_radius)
         if antennas_covering_tag > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
@@ -83,7 +83,7 @@ def calculate_coverage(readers, tags, rfid_radius=RFID_RADIUS):
     Tính toán độ phủ sóng dựa trên vị trí của các đầu đọc và thẻ RFID.
     """
     for tag in tags:
-        covered = any(distance(tag, reader) <= rfid_radius for reader in readers)
+        covered = any(distance(tag.position, reader.position) <= rfid_radius for reader in readers)
         if not covered:
             return False  # Có thẻ không được phủ sóng
     return True  # Tất cả thẻ đều được phủ sóng
@@ -134,3 +134,32 @@ def tentative_reader_elimination(readers, tags, coverage_function, max_recover_g
     print(f"Đã khôi phục đầu đọc {reader_to_remove['id']} vì không thể đạt độ phủ sóng sau {max_recover_generations} thế hệ.")
     
     return readers
+
+def constrain_velocity(velocity, upper_limits, lower_limits, c1=1.5, c2=1.5):
+    """
+    Giới hạn vận tốc của các hạt để tránh hiện tượng bùng nổ vận tốc trong SMPSO.
+
+    Parameters:
+    - velocity: Mảng numpy chứa vận tốc hiện tại của các hạt (shape: [n_particles, n_dimensions]).
+    - upper_limits: Giới hạn trên của không gian tìm kiếm cho từng chiều (array hoặc float).
+    - lower_limits: Giới hạn dưới của không gian tìm kiếm cho từng chiều (array hoặc float).
+    - c1, c2: Hệ số học tập nhận thức và xã hội.
+
+    Returns:
+    - Vận tốc đã được giới hạn.
+    """
+    
+    # Tính hệ số giới hạn vận tốc (chi) dựa trên c1 và c2
+    rho = c1 + c2
+    if rho > 4:
+        chi = 2 / (2 - rho - np.sqrt(rho**2 - 4*rho))
+    else:
+        chi = 1
+
+    # Tính giới hạn vận tốc cho từng chiều
+    delta = (upper_limits - lower_limits) / 2.0
+
+    # Giới hạn vận tốc cho các hạt bằng cách áp dụng hệ số chi
+    constrained_velocity = np.clip(velocity * chi, -delta, delta)
+    
+    return constrained_velocity

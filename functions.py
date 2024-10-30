@@ -4,7 +4,7 @@ import matplotlib.animation as animation
 from classes import  GRID_X, GRID_Y
 from utils import distance
 RFID_RADIUS = 3.69
-
+GRID_X, GRID_Y = 30, 25 
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 DIM = 2
@@ -21,7 +21,7 @@ def BieuDotags(READERS, TAGS):
     tag_positions = np.array([tag.position for tag in TAGS])
     reader_positions = np.array([reader.position for reader in READERS])
     
-    scatter_tag = ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='TAGS', s=10)
+    scatter_tag = ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='TAGS', s=10, marker='x')
     ax.scatter(reader_positions[:, 0], reader_positions[:, 1], color='red', label='Readers', marker='^')
     
     circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in reader_positions]
@@ -33,7 +33,7 @@ def BieuDotags(READERS, TAGS):
     def update_tag(frame):
         for tag in TAGS:
             tag.update_position()
-            tag.covered = any(distance(tag, reader)<= RFID_RADIUS for reader in READERS)
+            tag.covered = any(distance(tag.position, reader.position)<= RFID_RADIUS for reader in READERS)
         
         tag_positions = np.array([tag.position for tag in TAGS])
         tag_positions = np.atleast_2d(tag_positions)
@@ -45,7 +45,7 @@ def BieuDotags(READERS, TAGS):
 
         count_in_range = sum(tag.covered for tag in TAGS)
         count_text.set_text(f'Tags in range: {count_in_range}')
-        print(f"Iteration {frame}: {count_in_range} tags in range")
+        print(f"{count_in_range} tags in range")
 
         return scatter_tag
 
@@ -64,7 +64,7 @@ def BieuDoReader(READERS, TAGS):
     tag_positions = np.array([tag.position for tag in TAGS])
     reader_positions = np.array([reader.position for reader in READERS])
     
-    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10)
+    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10 , marker='x')
     scatter_rfid = ax.scatter(reader_positions[:, 0], reader_positions[:, 1], color='red', label='RFID Readers', marker='^')
 
     # Tạo các hình tròn biểu diễn vùng phủ sóng của các đầu đọc RFID
@@ -80,6 +80,6 @@ def BieuDoReader(READERS, TAGS):
             count_in_range += 1  
 
     count_text.set_text(f'Tags in range: {count_in_range}')    
-    return scatter_rfid, *circles
-plt.show()
+    scatter_rfid, *circles
+    plt.show()
     

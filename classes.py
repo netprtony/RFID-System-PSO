@@ -1,6 +1,6 @@
 import numpy as np
-from utils import fitness, calculate_covered_tags, fitness_function_basic, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight  # Import from utils.py
-GRID_X, GRID_Y = 25, 25  # Kích thước của lớp học
+from utils import fitness, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight, distance  # Import from utils.py
+GRID_X, GRID_Y = 30, 25  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 
@@ -30,10 +30,15 @@ class Readers:
         cognitive_component = c1 * r1 * (self.best_position - self.position)
         social_component = c2 * r2 * (global_best_position - self.position)
         
+        self.velocity = constrain_velocity(self.velocity, GRID_X, GRID_Y, c1, c2)
+
         self.velocity = w * self.velocity + cognitive_component + social_component
 
     def update_position(self):
         self.position += self.velocity
+        # Giới hạn vị trí trong khoảng [0, GRID_X] và [0, GRID_Y]
+        self.position[0] = np.clip(self.position[0], 0, GRID_X)  # Giới hạn x trong khoảng [0, GRID_X]
+        self.position[1] = np.clip(self.position[1], 0, GRID_Y)  # Giới hạn y trong khoảng [0, GRID_Y]
 
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter):
@@ -45,9 +50,11 @@ class SSPSO:
         self.global_best_value = float('inf')
 
     def optimize(self, TAGS, RFID_RADIUS):
+        print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
+
         for i in range(self.max_iter):
             j = 0
-            print(f"Iteration {i + 1} ----------------------------------------------------------")
+            print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
             for reader in self.readers:
                 print(f"Reader {j + 1}")
                 # Tính toán số thẻ được phủ sóng
@@ -69,12 +76,12 @@ class SSPSO:
                     self.global_best_value = fitness_value
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
                 reader.update_velocity(self.global_best_position, w)
-                print(f"    Old position: {reader.position}")
+                oldPostion = reader.position
                 reader.update_position()
-                print(f"    New position: {reader.position}")
+                print(f"    Khoảng cách đã di chuyển: {distance( reader.position, oldPostion)}")
                 j+=1
-                
-            # # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
-            # self.readers = tentative_reader_elimination(self.readers, tagS, 
-            #                                         coverage_function=calculate_coverage(self.readers, tagS, RFID_RADIUS),
-            #                                         max_recover_generations=5)   
+        
+        # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
+        self.readers = tentative_reader_elimination(self.readers, TAGS, 
+                                                coverage_function=calculate_coverage(self.readers, TAGS, RFID_RADIUS),
+                                                max_recover_generations=5)   

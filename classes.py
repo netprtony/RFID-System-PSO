@@ -49,9 +49,14 @@ class SSPSO:
         self.global_best_position = np.random.uniform(-1, 1, dim)
         self.global_best_value = float('inf')
 
+        # Lưu vị trí ban đầu và sau khi tối ưu
+        self.initial_positions = [reader.position.copy() for reader in self.readers]
+        self.optimized_positions = None  # Để lưu vị trí sau khi tối ưu
+
     def optimize(self, TAGS, RFID_RADIUS):
         print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
-
+        for i, reader in enumerate(self.readers):
+            print(f"Reader {i + 1} - Initial Position: {reader.position}")
         for i in range(self.max_iter):
             j = 0
             print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
@@ -76,12 +81,27 @@ class SSPSO:
                     self.global_best_value = fitness_value
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
                 reader.update_velocity(self.global_best_position, w)
-                oldPostion = reader.position
+                old = reader.position
+                print(f"Ví trí cũ : {reader.position}")
+                #oldPostion = reader.position
                 reader.update_position()
-                print(f"    Khoảng cách đã di chuyển: {distance( reader.position, oldPostion)}")
+                print(f"Ví trí mới : {reader.position} => {old}")
+                #print(f"    Khoảng cách đã di chuyển: {oldPostion} -> {reader.position}")
                 j+=1
+        
+        # Lưu vị trí tối ưu sau khi hoàn thành vòng lặp tối ưu hóa
+        self.optimized_positions = [reader.position.copy() for reader in self.readers]
         
         # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
         self.readers = tentative_reader_elimination(self.readers, TAGS, 
                                                 coverage_function=calculate_coverage(self.readers, TAGS, RFID_RADIUS),
                                                 max_recover_generations=5)   
+        
+         # In vị trí ban đầu và sau khi tối ưu
+        print("\nVị trí ban đầu của các đầu đọc:")
+        for i, pos in enumerate(self.initial_positions):
+            print(f"Reader {i + 1} - Initial Position: {pos}")
+        
+        print("\nVị trí tối ưu của các đầu đọc:")
+        for i, pos in enumerate(self.optimized_positions):
+            print(f"Reader {i + 1} - Optimized Position: {pos}")

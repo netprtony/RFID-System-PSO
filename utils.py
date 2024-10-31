@@ -1,6 +1,5 @@
 import numpy as np
-def distance(tag, reader):
-    return np.linalg.norm(tag - reader)
+
 RFID_RADIUS = 3.69
 def calculate_inertia_weight(w_max, w_min, iter, iter_max):
     return w_max - ((w_max - w_min) / iter_max) * iter
@@ -10,31 +9,37 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
     for tag in tags:
         tag_covered = False
         for reader in readers:
-            dist = distance(tag.position, reader.position)
+            dist = np.linalg.norm(tag.position - reader.position)
             if dist <= rfid_radius:
                 tag_covered = True
                 break
         if tag_covered:
             covered_tags += 1
-    return covered_tags / len(tags)
+    return (covered_tags / len(tags)) * 100
 
-# def calculate_overlap(readers, tags, rfid_radius=RFID_RADIUS):
-#     total_tags_covered = set()
-#     overlapping_tags = set()
+def calculate_overlap_penalty(readers, rfid_radius, epsilon=1e-6):
+    """
+    Tính toán hình phạt nghịch đảo cho các đầu đọc chồng lấn.
 
-#     for tag in tags:
-#         readers_covering_tag = 0
-#         for reader in readers:
-#             if distance(tag.position, reader.position) <= rfid_radius:
-#                 readers_covering_tag += 1
+    Tham số:
+    readers: Danh sách các đầu đọc (đối tượng Readers).
+    rfid_radius: Bán kính phủ sóng của mỗi đầu đọc.
+    epsilon: Giá trị rất nhỏ để tránh chia cho 0.
 
-#         if readers_covering_tag > 0:
-#             total_tags_covered.add(tag)
-#         if readers_covering_tag > 1:
-#             overlapping_tags.add(tag)
+    Trả về:
+    inverse_penalty: Giá trị nghịch đảo của hình phạt chồng lấn cho tất cả các cặp đầu đọc.
+    """
+    overlap_penalty = 0
+    for i in    range(len(readers)):
+        for j in range(i + 1, len(readers)):
+            distance = np.linalg.norm(readers[i].position - readers[j].position)
+            if distance < 2 * rfid_radius:  # Kiểm tra nếu 2 đầu đọc chồng lấn
+                overlap_area = (2 * rfid_radius - distance)  # Độ chồng lấn
+                overlap_penalty += overlap_area  # Tăng giá trị hình phạt theo độ chồng lấn
 
-#     overlap_percentage = len(overlapping_tags) / len(total_tags_covered) if total_tags_covered else 0.0
-#     return overlap_percentage
+    # Trả về nghịch đảo của giá trị hình phạt (cộng epsilon để tránh chia cho 0)
+    inverse_penalty = 1 / (overlap_penalty + epsilon)
+    return inverse_penalty
 
 def calculate_interference_basic(readers, tags, rfid_radius):
     """
@@ -51,23 +56,24 @@ def calculate_interference_basic(readers, tags, rfid_radius):
     ITF = 0  # Tổng giá trị nhiễu
     for tag in tags:  # Duyệt qua tất cả các thẻ
         antennas_covering_tag = sum(1 for reader in readers 
-                                        if distance(tag.position, reader.position) <= rfid_radius)
+                                        if np.linalg.norm(tag.position - reader.position) <= rfid_radius)
         if antennas_covering_tag > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF, OLP, w1 =1.0, w2 = 1.0, w3 = 1.0): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
     Tham số:
     COV: Phần trăm độ phủ của mạng
     ITF: Giá trị nhiễu của mạng (số lượng ăng-ten gây nhiễu)
-    
+    OLP: Giá trị hình phạt chồng lấn giữa các đầu đọc.
+    w1, w2, w3: Trọng số cho các thành phần độ phủ, nhiễu và hình phạt chồng lấn.
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (100 / (1 + (100 - COV) ** 2)) + (100 / (1 + ITF ** 2))
+    fitness = (w1 * (100 / (1 + (100 - COV) ** 2))) + (w2 * (100 / (1 + ITF ** 2))) - (w3 * OLP)
     return fitness
 
 
@@ -83,7 +89,7 @@ def calculate_coverage(readers, tags, rfid_radius=RFID_RADIUS):
     Tính toán độ phủ sóng dựa trên vị trí của các đầu đọc và thẻ RFID.
     """
     for tag in tags:
-        covered = any(distance(tag.position, reader.position) <= rfid_radius for reader in readers)
+        covered = any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers)
         if not covered:
             return False  # Có thẻ không được phủ sóng
     return True  # Tất cả thẻ đều được phủ sóng

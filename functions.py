@@ -2,7 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from classes import  GRID_X, GRID_Y
-from utils import distance
+
 RFID_RADIUS = 3.69
 GRID_X, GRID_Y = 30, 25 
 UPDATE_INTERVAL = 500
@@ -33,7 +33,7 @@ def BieuDotags(READERS, TAGS):
     def update_tag(frame):
         for tag in TAGS:
             tag.update_position()
-            tag.covered = any(distance(tag.position, reader.position)<= RFID_RADIUS for reader in READERS)
+            tag.covered = any(np.linalg.norm(tag.position - reader.position)<= RFID_RADIUS for reader in READERS)
         
         tag_positions = np.array([tag.position for tag in TAGS])
         tag_positions = np.atleast_2d(tag_positions)

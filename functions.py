@@ -1,4 +1,5 @@
 import numpy as np
+import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from classes import  GRID_X, GRID_Y
@@ -7,7 +8,25 @@ RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 DIM = 2
+def generate_hexagon_centers(width, height, cell_size=3.2, center_distance_x=6.4):
+    centers = []
+    dy = cell_size * math.sqrt(3)  # Khoảng cách dọc giữa các tâm (khoảng 5.54 mét)
 
+    # Lặp qua các hàng và cột của lưới
+    y = 0
+    row = 0
+    hexagon_count = 0  # Biến đếm số lượng lục giác
+    while y <= height:
+        x_offset = (row % 2) * (center_distance_x / 2)  # Dịch ngang cho hàng chẵn lẻ
+        x = x_offset
+        while x <= width:
+            centers.append((round(x, 2), round(y, 2)))
+            hexagon_count += 1
+            x += center_distance_x
+        y += dy
+        row += 1
+
+    return centers, hexagon_count
 
 def BieuDotags(READERS, TAGS):
     fig, ax = plt.subplots()

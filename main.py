@@ -1,8 +1,8 @@
 from classes import Tags, Readers, SSPSO
 from functions import BieuDotags, BieuDoReader, RFID_RADIUS
-NUM_RFID_READERS = 20
-NUM_INDIVIDUALS = 500
-NUM_ITERATION = 50
+NUM_RFID_READERS = 15
+NUM_INDIVIDUALS = 90
+NUM_ITERATION = 100
 DIM = 2
 readers =  [Readers(DIM) for _ in range(NUM_RFID_READERS)]
 tags = [Tags(DIM) for _ in range(NUM_INDIVIDUALS)]

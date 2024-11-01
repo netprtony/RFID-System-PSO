@@ -5,17 +5,47 @@ def calculate_inertia_weight(w_max, w_min, iter, iter_max):
     return w_max - ((w_max - w_min) / iter_max) * iter
 
 def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
+    total_tag = len(tags)
     covered_tags = 0
     for tag in tags:
-        tag_covered = False
+        # for reader in readers:
+        #     dist = np.linalg.norm(tag.position - reader.position)
+        #     if dist <= rfid_radius:
+        #         tag_covered = True
+        #         break
+        # if tag_covered:
+        #     covered_tags += 1
+        if any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers):
+            covered_tags +=1
+    COV = (covered_tags / total_tag) * 100
+    return COV
+
+def calculate_overlap_count(readers, tags, rfid_radius):
+    """
+    Tính tổng số lần chồng lấp giữa các đầu đọc đối với các thẻ trong phạm vi bán kính phủ sóng.
+
+    Tham số:
+    readers: Danh sách các đầu đọc (mỗi đầu đọc có thuộc tính position)
+    tags: Danh sách các thẻ (mỗi thẻ có thuộc tính position)
+    rfid_radius: Bán kính phủ sóng của đầu đọc
+
+    Trả về:
+    overlap_count: Tổng số trường hợp chồng lấp giữa các đầu đọc trên các thẻ
+    """
+    overlap_count = 0
+    for tag in tags:
+        # Đếm số lượng đầu đọc phủ sóng một thẻ trong bán kính
+        covering_readers = 0
         for reader in readers:
             dist = np.linalg.norm(tag.position - reader.position)
             if dist <= rfid_radius:
-                tag_covered = True
-                break
-        if tag_covered:
-            covered_tags += 1
-    return (covered_tags / len(tags)) * 100
+                covering_readers += 1  # Đếm số đầu đọc trong phạm vi phủ sóng
+
+        # Nếu có nhiều hơn một đầu đọc phủ sóng thẻ, tính số chồng lấp
+        if covering_readers > 1:
+            overlap_count += covering_readers - 1  # Số lượng chồng lấp (bỏ qua đầu đọc đầu tiên)
+    
+    return overlap_count
 
 def calculate_overlap_penalty(readers, rfid_radius, epsilon=1e-6):
     """
@@ -61,7 +91,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF, OLP, w1 =1.0, w2 = 1.0, w3 = 1.0): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -73,7 +103,7 @@ def fitness_function_basic(COV, ITF, OLP, w1 =1.0, w2 = 1.0, w3 = 1.0): # 23.opt
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (w1 * (100 / (1 + (100 - COV) ** 2))) + (w2 * (100 / (1 + ITF ** 2))) - (w3 * OLP)
+    fitness = (100 / (1 + (100 - COV) ** 2)) + (100 / (1 + ITF ** 2))
     return fitness
 
 

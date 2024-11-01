@@ -4,7 +4,6 @@ import matplotlib.animation as animation
 from classes import  GRID_X, GRID_Y
 
 RFID_RADIUS = 3.69
-GRID_X, GRID_Y = 30, 25 
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 DIM = 2

@@ -1,8 +1,8 @@
 import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
-from utils import calculate_overlap_penalty, fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_coverage, calculate_inertia_weight  # Import from utils.py
-GRID_X, GRID_Y = 30, 25  # Kích thước của lớp học
+from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_overlap_count, calculate_inertia_weight  # Import from utils.py
+GRID_X, GRID_Y =20, 20  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 
@@ -66,28 +66,25 @@ class SSPSO:
             print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
             for reader in self.readers:
                 print(f"Reader {j + 1}")
-                # Tính toán mức độ chồng lấp
-                OLP = calculate_overlap_penalty(self.readers, RFID_RADIUS)
                 # Tính toán số thẻ được phủ sóng
                 COV = calculate_covered_tags(self.readers, TAGS, RFID_RADIUS)
             
                 # Tính nhiễu
                 ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
-
+                print(f"COV: {COV}, ITF: {ITF}")
                 # Tính giá trị hàm mục tiêu
-                fitness_value = fitness_function_basic(COV, ITF, OLP)
+                fitness_value = fitness_function_basic(COV, ITF)
                 print(Fore.YELLOW + f"fitness value: {fitness_value}")
-                # fitness_value = fitness(COV, len(TAGS), ITF, len(self.readers), len(self.readers))
 
                 if fitness_value > reader.best_value:  # Tối ưu hóa
                     reader.best_position = reader.position.copy()
                     reader.best_value = fitness_value
-                    print(Style.BRIGHT + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
+                    print(Fore.RED + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
 
                 if fitness_value > self.global_best_value:  # Cập nhật vị trí tốt nhất toàn cục
                     self.global_best_position = reader.position.copy()
                     self.global_best_value = fitness_value
-                    print(Style.BRIGHT +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
+                    print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
                 reader.update_velocity(self.global_best_position, w)
                 print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")

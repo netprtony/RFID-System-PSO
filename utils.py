@@ -103,7 +103,7 @@ def fitness_function_basic(COV, ITF): # 23.optimizing_radio
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (100 / (1 + (100 - COV) ** 2)) * 0.7 + (100 / (1 + ITF ** 2)) * 0.3
+    fitness = (100 / (1 + (100 - COV) ** 2)) * 0.4 + (100 / (1 + ITF ** 2)) * 0.5
     return fitness
 
 

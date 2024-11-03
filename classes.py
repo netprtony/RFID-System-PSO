@@ -2,7 +2,7 @@ import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
 from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_overlap_count, calculate_inertia_weight  # Import from utils.py
-GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
+GRID_X, GRID_Y = 20, 20  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:
@@ -18,14 +18,14 @@ class Tags:
         self.position = np.clip(self.position, [0, 0], [GRID_X, GRID_Y])
 
 class Readers:
-    def __init__(self, dim, max_velocity=0.5):
+    def __init__(self, dim, max_velocity=0.1):
         self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
         self.velocity = np.random.rand(dim) * [0, 0.1]
         self.best_position = self.position.copy()
         self.best_value = float('-inf')
         self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
 
-    def update_velocity(self, global_best_position, w, c1=1.5, c2=1.5):
+    def update_velocity(self, global_best_position, w, c1=1.0, c2=1.0):
         r1 = np.random.rand(len(self.position))
         r2 = np.random.rand(len(self.position))
 

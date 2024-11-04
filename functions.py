@@ -106,34 +106,31 @@ def BieuDotags(READERS, TAGS):
     ani = animation.FuncAnimation(fig, update_tag, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
     plt.show()
 
-def BieuDoReader(READERS, TAGS):
+def BieuDoReader(readers, tags):
+    """
+    Vẽ biểu đồ vị trí các đầu đọc và các thẻ.
+
+    Parameters:
+    - readers: Danh sách các đối tượng reader
+    - tags: Danh sách các đối tượng tag
+    """
     fig, ax = plt.subplots()
-    ax.set_xlabel('X Coordinate')
-    ax.set_ylabel('Y Coordinate')
     ax.set_xlim(0, GRID_X)
     ax.set_ylim(0, GRID_Y)
     ax.set_aspect('equal', 'box')
 
-    # Trích xuất vị trí sinh viên và đầu đọc RFID
-    tag_positions = np.array([tag.position for tag in TAGS])
-    reader_positions = np.array([reader.position for reader in READERS])
-    
-    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10 , marker='x')
-    scatter_rfid = ax.scatter(reader_positions[:, 0], reader_positions[:, 1], color='red', label='RFID Readers', marker='^')
+    # Lấy vị trí của các tag
+    tag_positions = np.array([tag.position for tag in tags])
+    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10, marker='x')
 
-    # Tạo các hình tròn biểu diễn vùng phủ sóng của các đầu đọc RFID
-    circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in reader_positions]
+    # Lấy vị trí của các reader có active = True
+    active_reader_positions = np.array([reader.position for reader in readers if reader.active])
+    ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Active Readers', marker='^')
+
+    # Vẽ các vòng tròn phạm vi phủ sóng của các reader có active = True
+    circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in active_reader_positions]
     for circle in circles:
         ax.add_artist(circle)
 
-    # Text hiển thị số sinh viên trong vùng bán kính
-    count_text = ax.text(0.02, 1.05, 'Tags in range: 0', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    count_in_range = 0
-    for tag in tag_positions:
-        if any(np.linalg.norm(tag - reader.position) <= RFID_RADIUS for reader in READERS):
-            count_in_range += 1  
-
-    count_text.set_text(f'Tags in range: {count_in_range}')    
-    scatter_rfid, *circles
+    ax.legend(bbox_to_anchor=(1.05, 1), loc='lower right')
     plt.show()
-    

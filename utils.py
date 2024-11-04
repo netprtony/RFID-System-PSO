@@ -8,68 +8,32 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
     total_tag = len(tags)
     covered_tags = 0
     for tag in tags:
-        # for reader in readers:
-        #     dist = np.linalg.norm(tag.position - reader.position)
-        #     if dist <= rfid_radius:
-        #         tag_covered = True
-        #         break
-        # if tag_covered:
-        #     covered_tags += 1
         if any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers):
             covered_tags +=1
     COV = (covered_tags / total_tag) * 100
     return COV
 
-def calculate_overlap_count(readers, tags, rfid_radius):
+def calculate_uncovered_tags(tags, readers, rfid_radius):
     """
-    Tính tổng số lần chồng lấp giữa các đầu đọc đối với các thẻ trong phạm vi bán kính phủ sóng.
+    Tính toán số lượng các tag không được bao phủ bởi bất kỳ reader nào.
 
-    Tham số:
-    readers: Danh sách các đầu đọc (mỗi đầu đọc có thuộc tính position)
-    tags: Danh sách các thẻ (mỗi thẻ có thuộc tính position)
-    rfid_radius: Bán kính phủ sóng của đầu đọc
+    Parameters:
+    - tags: Danh sách các đối tượng tag
+    - readers: Danh sách các đối tượng reader
+    - rfid_radius: Bán kính phủ sóng của reader
 
-    Trả về:
-    overlap_count: Tổng số trường hợp chồng lấp giữa các đầu đọc trên các thẻ
+    Returns:
+    - num_uncovered_tags: Số lượng các tag không được bao phủ
     """
-    overlap_count = 0
+    num_uncovered_tags = 0
+
     for tag in tags:
-        # Đếm số lượng đầu đọc phủ sóng một thẻ trong bán kính
-        covering_readers = 0
-        for reader in readers:
-            dist = np.linalg.norm(tag.position - reader.position)
-            if dist <= rfid_radius:
-                covering_readers += 1  # Đếm số đầu đọc trong phạm vi phủ sóng
+        covered = any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers)
+        if not covered:
+            num_uncovered_tags += 1
 
-        # Nếu có nhiều hơn một đầu đọc phủ sóng thẻ, tính số chồng lấp
-        if covering_readers > 1:
-            overlap_count += covering_readers - 1  # Số lượng chồng lấp (bỏ qua đầu đọc đầu tiên)
-    
-    return overlap_count
+    return num_uncovered_tags
 
-def calculate_overlap_penalty(readers, rfid_radius, epsilon=1e-6):
-    """
-    Tính toán hình phạt nghịch đảo cho các đầu đọc chồng lấn.
-
-    Tham số:
-    readers: Danh sách các đầu đọc (đối tượng Readers).
-    rfid_radius: Bán kính phủ sóng của mỗi đầu đọc.
-    epsilon: Giá trị rất nhỏ để tránh chia cho 0.
-
-    Trả về:
-    inverse_penalty: Giá trị nghịch đảo của hình phạt chồng lấn cho tất cả các cặp đầu đọc.
-    """
-    overlap_penalty = 0
-    for i in    range(len(readers)):
-        for j in range(i + 1, len(readers)):
-            distance = np.linalg.norm(readers[i].position - readers[j].position)
-            if distance < 2 * rfid_radius:  # Kiểm tra nếu 2 đầu đọc chồng lấn
-                overlap_area = (2 * rfid_radius - distance)  # Độ chồng lấn
-                overlap_penalty += overlap_area  # Tăng giá trị hình phạt theo độ chồng lấn
-
-    # Trả về nghịch đảo của giá trị hình phạt (cộng epsilon để tránh chia cho 0)
-    inverse_penalty = 1 / (overlap_penalty + epsilon)
-    return inverse_penalty
 
 def calculate_interference_basic(readers, tags, rfid_radius):
     """
@@ -107,12 +71,6 @@ def fitness_function_basic(COV, ITF): # 23.optimizing_radio
     return fitness
 
 
-
-def fitness(tags_covered, total_tags, overlap_points, total_readers, readers_used):
-    X = tags_covered / total_tags
-    Y = (total_readers - readers_used) / total_readers
-    Z = (total_tags - overlap_points) / total_tags
-    return 0.6 * X + 0.2 * Y + 0.2 * Z
 
 def calculate_coverage(readers, tags, rfid_radius=RFID_RADIUS):
     """
@@ -171,31 +129,32 @@ def tentative_reader_elimination(readers, tags, coverage_function, max_recover_g
     
     return readers
 
-def constrain_velocity(velocity, upper_limits, lower_limits, c1=1.5, c2=1.5):
+def constrain_velocity(velocity, upper_limit, lower_limit):
     """
-    Giới hạn vận tốc của các hạt để tránh hiện tượng bùng nổ vận tốc trong SMPSO.
+    Giới hạn tốc độ của hạt trong phạm vi đã cho.
 
     Parameters:
-    - velocity: Mảng numpy chứa vận tốc hiện tại của các hạt (shape: [n_particles, n_dimensions]).
-    - upper_limits: Giới hạn trên của không gian tìm kiếm cho từng chiều (array hoặc float).
-    - lower_limits: Giới hạn dưới của không gian tìm kiếm cho từng chiều (array hoặc float).
-    - c1, c2: Hệ số học tập nhận thức và xã hội.
+    - velocity: Vận tốc hiện tại của hạt (danh sách hoặc mảng chứa các giá trị vận tốc ở từng chiều)
+    - upper_limit: Giới hạn trên của không gian tìm kiếm (danh sách hoặc mảng cùng độ dài với velocity hoặc số nguyên)
+    - lower_limit: Giới hạn dưới của không gian tìm kiếm (danh sách hoặc mảng cùng độ dài với velocity hoặc số nguyên)
 
     Returns:
-    - Vận tốc đã được giới hạn.
+    - velocity: Vận tốc đã được giới hạn
     """
-    
-    # Tính hệ số giới hạn vận tốc (chi) dựa trên c1 và c2
-    rho = c1 + c2
-    if rho > 4:
-        chi = 2 / (2 - rho - np.sqrt(rho**2 - 4*rho))
-    else:
-        chi = 1
+    # Nếu upper_limit và lower_limit là số nguyên, chuyển đổi chúng thành danh sách
+    if isinstance(upper_limit, (int, float)):
+        upper_limit = [upper_limit] * len(velocity)
+    if isinstance(lower_limit, (int, float)):
+        lower_limit = [lower_limit] * len(velocity)
 
-    # Tính giới hạn vận tốc cho từng chiều
-    delta = (upper_limits - lower_limits) / 2.0
+    # Tính giá trị giới hạn tốc độ delta
+    delta = [(u - l) / 2 for u, l in zip(upper_limit, lower_limit)]
 
-    # Giới hạn vận tốc cho các hạt bằng cách áp dụng hệ số chi
-    constrained_velocity = np.clip(velocity * chi, -delta, delta)
-    
-    return constrained_velocity
+    # Giới hạn vận tốc
+    for i in range(len(velocity)):
+        if velocity[i] > delta[i]:
+            velocity[i] = delta[i]
+        elif velocity[i] < -delta[i]:
+            velocity[i] = -delta[i]
+
+    return velocity

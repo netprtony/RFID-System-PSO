@@ -1,7 +1,7 @@
 import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
-from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_overlap_count, calculate_inertia_weight  # Import from utils.py
+from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight  # Import from utils.py
 GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
@@ -18,7 +18,7 @@ class Tags:
         self.position = np.clip(self.position, [0, 0], [GRID_X, GRID_Y])
 
 class Readers:
-    def __init__(self, position, dim = 2, max_velocity=0.1):
+    def __init__(self, position, dim = 2, max_velocity=0.5):
         self.position = position
         self.velocity = np.random.rand(dim) * [0, 0.1]
         self.best_position = self.position.copy()
@@ -26,7 +26,7 @@ class Readers:
         self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
         self.active = True
 
-    def update_velocity(self, global_best_position, w, c1=1.0, c2=1.0):
+    def update_velocity(self, global_best_position, w, c1=1.5, c2=1.5):
         r1 = np.random.rand(len(self.position))
         r2 = np.random.rand(len(self.position))
 
@@ -92,9 +92,9 @@ class SSPSO:
                     print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
                      # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
                     self.best_positions = [reader.position.copy() for reader in self.readers]
-                    bestCOV = COV
-                    bestITF = ITF
-                    bestIter = i
+                    #bestCOV = COV
+                    #bestITF = ITF
+                    #bestIter = i
                     fitness_changed = True  # Đánh dấu có thay đổi fitness
 
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
@@ -113,18 +113,13 @@ class SSPSO:
             # Dừng nếu fitness không thay đổi trong 5 vòng lặp liên tiếp hoặc đạt 100 vòng lặp
             if stagnant_iterations >= 5:
                 print("Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
-                break
+                break 
     
-        # # Sau khi hoàn thành một vòng lặp tối ưu hóa, áp dụng TRE
-        # self.readers = tentative_reader_elimination(self.readers, TAGS, 
-        #                                         coverage_function=calculate_coverage(self.readers, TAGS, RFID_RADIUS),
-        #                                         max_recover_generations=5)   
-        
-        
          # Sau khi hoàn thành vòng lặp tối ưu hóa, gắn lại các vị trí tốt nhất cho các đầu đọc
-        for idx, reader in enumerate(self.readers):
-            reader.position = self.best_positions[idx]
-            print(f"Reader {idx + 1} - Optimized Position: {reader.position}")
-        print(Style.BRIGHT + f"Tại vòng lặp thứ {bestIter + 1} đạt độ bao phủ :{bestCOV}, độ nhiễu :{bestITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
+        # for idx, reader in enumerate(self.readers):
+        #     reader.position = self.best_positions[idx]
+        #     print(f"Reader {idx + 1} - Optimized Position: {reader.position}")
+        #print(Style.BRIGHT + f"Tại vòng lặp thứ {bestIter + 1} đạt độ bao phủ :{bestCOV}, độ nhiễu :{bestITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
+        print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         # Trả về danh sách đầu đọc với vị trí tối ưu
         return self.readers

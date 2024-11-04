@@ -1,15 +1,13 @@
 from classes import Tags, Readers, SSPSO, GRID_X, GRID_Y
-from functions import BieuDotags, BieuDoReader, RFID_RADIUS, generate_hexagon_centers, generate_hexagon_centers_with_boundary
+from functions import BieuDotags, BieuDoReader, RFID_RADIUS, initialize_readers_with_kmeans
 
-NUM_INDIVIDUALS = 90
+NUM_INDIVIDUALS = 200
 NUM_ITERATION = 100
 DIM = 2
-positionHexagonReader , NUM_RFID_READERS = generate_hexagon_centers_with_boundary(GRID_X, GRID_Y)
-readers =  [Readers(DIM) for _ in range(NUM_RFID_READERS)]
+NUM_RFID_READERS = 25
 tags = [Tags(DIM) for _ in range(NUM_INDIVIDUALS)]
-for idx, reader in enumerate(readers):
-            reader.position = positionHexagonReader[idx]
-sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION)
+readers = initialize_readers_with_kmeans(tags, NUM_RFID_READERS)
+sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers)
 
 BieuDoReader(readers, tags)
 readers = sspso.optimize(tags, RFID_RADIUS)

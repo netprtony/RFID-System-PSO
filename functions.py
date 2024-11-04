@@ -2,12 +2,28 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+from sklearn.cluster import KMeans
+from classes import Readers
 from classes import  GRID_X, GRID_Y
 
 RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 DIM = 2
+def initialize_readers_with_kmeans(TAGS, n_readers):
+    # Lấy vị trí của các tag
+    tag_positions = np.array([tag.position for tag in TAGS])
+    
+    # Sử dụng thuật toán k-means để tìm các cluster center
+    kmeans = KMeans(n_clusters=n_readers, random_state=0).fit(tag_positions)
+    
+    # Đặt các reader tại các cluster center
+    reader_positions = kmeans.cluster_centers_
+    
+    # Khởi tạo các reader với vị trí mới
+    READERS = [Readers(position=pos) for pos in reader_positions]
+    
+    return READERS
 def generate_hexagon_centers_with_boundary(width, height, cell_size=3.2, center_distance_x=6.4):
     centers = []
     dy = cell_size * math.sqrt(3)  # Khoảng cách dọc giữa các tâm (khoảng 5.54 mét)

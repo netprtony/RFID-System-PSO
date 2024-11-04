@@ -2,7 +2,7 @@ import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
 from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, tentative_reader_elimination, calculate_overlap_count, calculate_inertia_weight  # Import from utils.py
-GRID_X, GRID_Y = 20, 20  # Kích thước của lớp học
+GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:
@@ -18,12 +18,13 @@ class Tags:
         self.position = np.clip(self.position, [0, 0], [GRID_X, GRID_Y])
 
 class Readers:
-    def __init__(self, dim, max_velocity=0.1):
-        self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
+    def __init__(self, position, dim = 2, max_velocity=0.1):
+        self.position = position
         self.velocity = np.random.rand(dim) * [0, 0.1]
         self.best_position = self.position.copy()
         self.best_value = float('-inf')
         self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
+        self.active = True
 
     def update_velocity(self, global_best_position, w, c1=1.0, c2=1.0):
         r1 = np.random.rand(len(self.position))
@@ -45,11 +46,11 @@ class Readers:
         self.position[1] = np.clip(self.position[1], 0, GRID_Y)
 
 class SSPSO:
-    def __init__(self, num_particles, dim, max_iter):
+    def __init__(self, num_particles, dim, max_iter, readers):
         self.num_particles = num_particles
         self.dim = dim
         self.max_iter = max_iter
-        self.readers = [Readers(dim) for _ in range(num_particles)]
+        self.readers = readers
         self.global_best_position = np.random.uniform(-1, 1, dim)
         self.global_best_value = float('-inf')
         self.best_positions = []

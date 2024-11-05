@@ -5,11 +5,16 @@ import matplotlib.animation as animation
 from sklearn.cluster import KMeans
 from classes import Readers
 from classes import  GRID_X, GRID_Y
+from utils import calculate_covered_tags
 
 RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
+MAX_RFID_READERS = 50
+COVER_THRESHOLD = 0.80 # Ngưỡng bao phủ
 DIM = 2
+# Hàm tính khoảng cách Euclidean
+
 def initialize_readers_with_kmeans(TAGS, n_readers):
     # Lấy vị trí của các tag
     tag_positions = np.array([tag.position for tag in TAGS])
@@ -24,6 +29,40 @@ def initialize_readers_with_kmeans(TAGS, n_readers):
     READERS = [Readers(position=pos) for pos in reader_positions]
     
     return READERS
+
+# Hàm Selection Mechanism for the Number of Readers
+def selection_mechanism(tags, initial_num_readers):
+    readers = []  # Danh sách để lưu các đầu đọc
+    num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
+
+    while True:
+        # Khởi tạo các đầu đọc với vị trí ngẫu nhiên
+        readers = initialize_readers_with_kmeans(tags, num_readers)
+        BieuDoReader(readers, tags)
+        # Kiểm tra độ bao phủ của tất cả các thẻ
+        for tag in tags:
+            tag.covered = False  # Đặt trạng thái chưa được bao phủ
+
+            # Kiểm tra xem thẻ có nằm trong vùng phủ sóng của bất kỳ đầu đọc nào không
+            for reader in readers:
+                if np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS:
+                    tag.covered = True
+                    break
+
+        # Tính tỷ lệ thẻ được bao phủ
+        coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
+        print(f"Coverage ratio: {coverage_ratio}")
+
+        # Kiểm tra nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
+        if coverage_ratio >= COVER_THRESHOLD:
+            break
+
+        # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
+        num_readers += 1
+        print(f"Number of readers: {num_readers}")
+
+    return readers  # Trả về danh sách đầu đọc đã được chọn
+
 def generate_hexagon_centers_with_boundary(width, height, cell_size=3.2, center_distance_x=6.4):
     centers = []
     dy = cell_size * math.sqrt(3)  # Khoảng cách dọc giữa các tâm (khoảng 5.54 mét)
@@ -122,7 +161,7 @@ def BieuDoReader(readers, tags):
     # Lấy vị trí của các tag
     tag_positions = np.array([tag.position for tag in tags])
     ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10, marker='x')
-
+    ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     # Lấy vị trí của các reader có active = True
     active_reader_positions = np.array([reader.position for reader in readers if reader.active])
     ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Active Readers', marker='^')

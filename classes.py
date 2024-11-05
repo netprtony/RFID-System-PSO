@@ -2,7 +2,7 @@ import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
 from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight  # Import from utils.py
-GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
+GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:

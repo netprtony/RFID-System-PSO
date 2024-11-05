@@ -72,62 +72,8 @@ def fitness_function_basic(COV, ITF): # 23.optimizing_radio
 
 
 
-def calculate_coverage(readers, tags, rfid_radius=RFID_RADIUS):
-    """
-    Tính toán độ phủ sóng dựa trên vị trí của các đầu đọc và thẻ RFID.
-    """
-    for tag in tags:
-        covered = any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers)
-        if not covered:
-            return False  # Có thẻ không được phủ sóng
-    return True  # Tất cả thẻ đều được phủ sóng
 
 
-
-def tentative_reader_elimination(readers, tags, coverage_function, max_recover_generations):
-    """
-    Hàm Tentative Reader Elimination (TRE)
-
-    Parameters:
-    - readers: danh sách đầu đọc hiện tại trong mạng, mỗi đầu đọc có thông tin về vị trí và công suất phát.
-    - tags: danh sách các thẻ RFID trong khu vực, chứa thông tin về trạng thái phủ sóng của thẻ.
-    - coverage_function: hàm tính toán độ phủ sóng của mạng dựa trên đầu đọc và thẻ hiện tại.
-    - max_recover_generations: số thế hệ tối đa để hệ thống khôi phục độ phủ sóng nếu giảm do loại bỏ đầu đọc.
-
-    Returns:
-    - readers: danh sách đầu đọc sau khi áp dụng TRE (có thể ít hơn hoặc giữ nguyên).
-    """
-    # Bước 1: Kiểm tra độ phủ sóng hiện tại (bắt buộc phải có độ phủ 100%)
-    full_coverage = coverage_function
-    
-    if not full_coverage:
-        print("Không thể thực hiện TRE vì không có độ phủ sóng đầy đủ.")
-        return readers
-    
-    # Bước 2: Chọn đầu đọc có số lượng thẻ ít nhất trong phạm vi
-    readers_with_fewest_tags = sorted(readers, key=lambda reader: reader['covered_tags'])
-
-    # Loại bỏ đầu đọc phủ sóng ít thẻ nhất
-    reader_to_remove = readers_with_fewest_tags[0]
-    readers.remove(reader_to_remove)
-    print(f"Đã loại bỏ đầu đọc {reader_to_remove['id']}.")
-
-    # Bước 3: Kiểm tra độ phủ sóng sau khi loại bỏ đầu đọc
-    for generation in range(max_recover_generations):
-        full_coverage = coverage_function(readers, tags)
-        
-        if full_coverage:
-            print(f"Đã khôi phục độ phủ sóng đầy đủ sau {generation + 1} thế hệ.")
-            return readers  # Loại bỏ đầu đọc thành công
-        
-        # # Giả lập quá trình tối ưu hóa qua các thế hệ (nếu có)
-        # optimize_readers(readers, tags)  # Hàm này có thể là quá trình tìm kiếm giải pháp
-
-    # Nếu không thể đạt độ phủ đầy đủ, khôi phục đầu đọc đã loại bỏ
-    readers.append(reader_to_remove)
-    print(f"Đã khôi phục đầu đọc {reader_to_remove['id']} vì không thể đạt độ phủ sóng sau {max_recover_generations} thế hệ.")
-    
-    return readers
 
 def constrain_velocity(velocity, upper_limit, lower_limit):
     """

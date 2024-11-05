@@ -55,7 +55,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF, w1, w2): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -67,7 +67,7 @@ def fitness_function_basic(COV, ITF): # 23.optimizing_radio
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (100 / (1 + (100 - COV) ** 2)) * 0.4 + (100 / (1 + ITF ** 2)) * 0.5
+    fitness = (100 / (1 + (100 - COV) ** 2)) * w1 + (100 / (1 + ITF ** 2)) * w2
     return fitness
 
 

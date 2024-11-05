@@ -55,12 +55,9 @@ class SSPSO:
         self.global_best_value = float('-inf')
         self.best_positions = []
          # Biến đếm số vòng lặp fitness không đổi
-        stagnant_iterations = 0
-    def optimize(self, TAGS, RFID_RADIUS):
-        bestCOV = None
-        bestITF = None
-        bestIter = None
         
+    def optimize(self, TAGS, RFID_RADIUS):
+        stagnant_iterations = 0
         print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
         for i, reader in enumerate(self.readers):
             print(f"Reader {i + 1} - Initial Position: {reader.position}")
@@ -78,7 +75,7 @@ class SSPSO:
                 ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
                 print(f"COV: {COV}, ITF: {ITF}")
                 # Tính giá trị hàm mục tiêu
-                fitness_value = fitness_function_basic(COV, ITF)
+                fitness_value = fitness_function_basic(COV, ITF, 0.7, 0.3)
                 print(Fore.YELLOW + f"fitness value: {fitness_value}")
 
                 if fitness_value > reader.best_value:  # Tối ưu hóa

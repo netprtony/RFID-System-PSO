@@ -89,9 +89,6 @@ class SSPSO:
                     print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
                      # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
                     self.best_positions = [reader.position.copy() for reader in self.readers]
-                    #bestCOV = COV
-                    #bestITF = ITF
-                    #bestIter = i
                     fitness_changed = True  # Đánh dấu có thay đổi fitness
 
                 w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)

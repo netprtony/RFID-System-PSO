@@ -1,17 +1,17 @@
 import numpy as np
-import math
+from colorama import Fore, Style, init
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from sklearn.cluster import KMeans
 from classes import Readers
 from classes import  GRID_X, GRID_Y
-from utils import calculate_covered_tags, calculate_interference_basic
+from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive
 from matplotlib.widgets import Button
 RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
 NUM_RFID_READERS = 35
 MAX_RFID_READERS = 50
-COVER_THRESHOLD = 0.90 # Ngưỡng bao phủ
+COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.5  # Hệ số lực đẩy
 ATTRACTION_FORCE = 0.3  # Hệ số lực hút
@@ -52,7 +52,7 @@ def selection_mechanism(tags, initial_num_readers):
 
         # Tính tỷ lệ thẻ được bao phủ
         coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
-        print(f"Coverage ratio: {coverage_ratio}")
+        print(Fore.MAGENTA + f"Độ bao phủ: {coverage_ratio}")
 
         # Kiểm tra nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
         if coverage_ratio >= COVER_THRESHOLD:
@@ -60,9 +60,7 @@ def selection_mechanism(tags, initial_num_readers):
 
         # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
         num_readers += 1
-        print(f"Number of readers: {num_readers}")
-        if BieuDoReader(readers, tags) == False: 
-            break
+        #BieuDoReader(readers, tags)
 
     return readers  # Trả về danh sách đầu đọc đã được chọn
 
@@ -105,7 +103,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
 
         # Tính tỷ lệ thẻ được bao phủ
         coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
-        print(f"Coverage ratio: {coverage_ratio}")
+        print(Fore.LIGHTYELLOW_EX + f"Độ bao phủ: {coverage_ratio}")
         # Kiểm tra nếu tỷ lệ bao phủ không thay đổi
         if coverage_ratio == last_coverage:
             no_change_iterations += 1
@@ -117,7 +115,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
             break
 
         last_coverage = coverage_ratio  
-        BieuDoReader(readers, tags)
+        #BieuDoReader(readers, tags)
     print(f"Final coverage: {last_coverage}")
 
 def BieuDotags(READERS, TAGS):
@@ -180,6 +178,7 @@ def BieuDoReader(readers, tags):
     ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10, marker='x')
     ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    ax.text(0.75, 1.05, f'ITF: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     # Lấy vị trí của các reader có active = True
     active_reader_positions = np.array([reader.position for reader in readers if reader.active])
     ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
@@ -195,4 +194,75 @@ def BieuDoReader(readers, tags):
 def mainOptimization(tags, readers, sspso):
     while True:
         readers = sspso.optimize(tags, RFID_RADIUS)
-        adjust_readers_location_by_virtual_force(readers, tags, 0.9)
+        adjust_readers_location_by_virtual_force(readers, tags)
+        #readers = selection_mechanism(tags, NUM_RFID_READERS)
+        readers = TRE(readers, tags, coverage_threshold=1.0, max_generations=10)
+        if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
+            print("Optimization completed.")
+            BieuDoReader(readers, tags)
+            break
+    
+
+def TRE(readers, tags, coverage_threshold=1.0, max_generations=10):
+    """
+    Hàm Loại bỏ đầu đọc tạm thời (TRE) để giảm số lượng đầu đọc RFID mà vẫn đảm bảo độ phủ sóng.
+    
+    Parameters:
+    - readers: danh sách các đối tượng Readers
+    - tags: danh sách các đối tượng Tags
+    - coverage_threshold: ngưỡng độ phủ yêu cầu (mặc định là 1.0 cho 100%)
+    - max_generations: số lượng thế hệ tối đa để kiểm tra độ phủ
+    
+    Returns:
+    - readers: danh sách các đối tượng Readers sau khi loại bỏ đầu đọc dư thừa
+    """
+    # Kiểm tra độ phủ ban đầu
+    initial_coverage = calculate_covered_tags(readers, tags)/100
+    if initial_coverage < coverage_threshold:
+        print("Độ phủ ban đầu không đạt yêu cầu.")
+        return readers  # Không loại bỏ nếu không đạt độ phủ ban đầu
+
+    # Loại bỏ đầu đọc dư thừa từng bước
+    generations_without_improvement = 0
+    while generations_without_improvement < max_generations:
+        # Tìm đầu đọc ít quan trọng nhất và loại bỏ nó tạm thời
+        least_important_reader = find_least_important_reader(readers, tags)
+        if least_important_reader == -1:
+            break  # Không còn đầu đọc nào có thể loại bỏ
+
+        # Tắt đầu đọc
+        readers[least_important_reader].active = False
+        
+        # Tính độ phủ sau khi loại bỏ
+        current_coverage = calculate_covered_tags(readers, tags)/100
+        
+        if current_coverage >= coverage_threshold:
+            # Độ phủ vẫn đạt yêu cầu, giữ đầu đọc này tắt
+            generations_without_improvement = 0
+            print(Fore.GREEN + f"Đã loại bỏ thành công đầu đọc {least_important_reader}.")
+            BieuDoReader(readers, tags)
+        else:
+            print(Fore.LIGHTBLUE_EX + f"Khôi phục đầu đọc {least_important_reader}.")
+            # Độ phủ giảm dưới ngưỡng, khôi phục đầu đọc
+            readers[least_important_reader].active = True
+            generations_without_improvement += 1
+
+    return readers
+
+def find_least_important_reader(readers, tags):
+    # Tìm đầu đọc phủ sóng ít thẻ nhất
+    min_covered_count = float('inf')
+    min_reader_idx = -1
+
+    for i, reader in enumerate(readers):
+        if reader.active:  # Chỉ xem xét đầu đọc đang hoạt động
+            covered_tags = set()
+            for tag in tags:
+                distance = np.linalg.norm(reader.position - tag.position)
+                if distance <= reader.max_velocity:
+                    covered_tags.add(tag)
+
+            if len(covered_tags) < min_covered_count:
+                min_covered_count = len(covered_tags)
+                min_reader_idx = i
+    return min_reader_idx

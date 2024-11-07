@@ -8,11 +8,16 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
     total_tag = len(tags)
     covered_tags = 0
     for tag in tags:
-        if any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers):
+        if any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers if reader.active):
             covered_tags +=1
     COV = (covered_tags / total_tag) * 100
     return COV
-
+def countReaderActive(readers):
+    count = 0
+    for reader in readers:
+        if reader.active:
+            count += 1
+    return count
 def calculate_uncovered_tags(tags, readers, rfid_radius):
     """
     Tính toán số lượng các tag không được bao phủ bởi bất kỳ reader nào.
@@ -50,7 +55,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
     ITF = 0  # Tổng giá trị nhiễu
     for tag in tags:  # Duyệt qua tất cả các thẻ
         antennas_covering_tag = sum(1 for reader in readers 
-                                        if np.linalg.norm(tag.position - reader.position) <= rfid_radius)
+                                        if np.linalg.norm(tag.position - reader.position) <= rfid_radius and reader.active)
         if antennas_covering_tag > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF

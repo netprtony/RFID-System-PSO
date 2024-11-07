@@ -1,7 +1,7 @@
 import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
-from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight  # Import from utils.py
+from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, calculate_load_balance # Import from utils.py
 GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
@@ -60,44 +60,47 @@ class SSPSO:
         stagnant_iterations = 0
         print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
         for i, reader in enumerate(self.readers):
-            print(f"Reader {i + 1} - Initial Position: {reader.position}")
+            if reader.active:
+                print(f"Reader {i + 1} - Initial Position: {reader.position}")
         for i in range(self.max_iter):
             j = 0
             print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
              # Flag để kiểm tra nếu fitness_value không thay đổi trong vòng lặp này
             fitness_changed = False
             for reader in self.readers:
-                print(f"Reader {j + 1}")
-                # Tính toán số thẻ được phủ sóng
-                COV = calculate_covered_tags(self.readers, TAGS, RFID_RADIUS)
-            
-                # Tính nhiễu
-                ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
-                print(f"COV: {COV}, ITF: {ITF}")
-                # Tính giá trị hàm mục tiêu
-                fitness_value = fitness_function_basic(COV, ITF, 0.7, 0.3)
-                print(Fore.YELLOW + f"fitness value: {fitness_value}")
+                if reader.active:
+                    print(f"Reader {j + 1}")
+                    # Tính toán số thẻ được phủ sóng
+                    COV = calculate_covered_tags(self.readers, TAGS, RFID_RADIUS)
+                
+                    # Tính nhiễu
+                    ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
+                    LDB = calculate_load_balance(self.readers, TAGS)
+                    print(f"COV: {COV}, ITF: {ITF}, LDB: {LDB}")
+                    # Tính giá trị hàm mục tiêu
+                    fitness_value = fitness_function_basic(COV, ITF, LDB, 0.5, 0.3, 0.2)
+                    print(Fore.YELLOW + f"fitness value: {fitness_value}")
 
-                if fitness_value > reader.best_value:  # Tối ưu hóa
-                    reader.best_position = reader.position.copy()
-                    reader.best_value = fitness_value
-                    print(Fore.RED + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
+                    if fitness_value > reader.best_value:  # Tối ưu hóa
+                        reader.best_position = reader.position.copy()
+                        reader.best_value = fitness_value
+                        print(Fore.RED + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
 
-                if fitness_value > self.global_best_value:  # Cập nhật vị trí tốt nhất toàn cục
-                    self.global_best_position = reader.position.copy()
-                    self.global_best_value = fitness_value
-                    print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
-                     # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
-                    self.best_positions = [reader.position.copy() for reader in self.readers]
-                    fitness_changed = True  # Đánh dấu có thay đổi fitness
+                    if fitness_value > self.global_best_value:  # Cập nhật vị trí tốt nhất toàn cục
+                        self.global_best_position = reader.position.copy()
+                        self.global_best_value = fitness_value
+                        print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
+                        # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
+                        self.best_positions = [reader.position.copy() for reader in self.readers]
+                        fitness_changed = True  # Đánh dấu có thay đổi fitness
 
-                w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
-                reader.update_velocity(self.global_best_position, w)
-                print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")
-            
-                reader.update_position()
-                print(Fore.BLUE +f"    Ví trí mới : {reader.position}")
-                j+=1
+                    w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
+                    reader.update_velocity(self.global_best_position, w)
+                    print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")
+                
+                    reader.update_position()
+                    print(Fore.BLUE +f"    Ví trí mới : {reader.position}")
+                    j+=1
             # Kiểm tra nếu fitness_value không thay đổi
             if fitness_changed:
                 stagnant_iterations = 0  # Reset đếm nếu có thay đổi fitness

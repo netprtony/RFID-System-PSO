@@ -60,7 +60,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF, w1, w2): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF, LDB, w1, w2, w3): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -72,7 +72,7 @@ def fitness_function_basic(COV, ITF, w1, w2): # 23.optimizing_radio
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (100 / (1 + (100 - COV) ** 2)) * w1 + (100 / (1 + ITF ** 2)) * w2
+    fitness = (100 / (1 + (100 - COV) ** 2)) * w1 + (100 / (1 + ITF ** 2)) * w2 + (100 / (1 + (1 - LDB) ** 2)) * w3
     return fitness
 
 
@@ -109,3 +109,21 @@ def constrain_velocity(velocity, upper_limit, lower_limit):
             velocity[i] = -delta[i]
 
     return velocity
+
+# Hàm tính cân bằng tải
+def calculate_load_balance(readers, tags):
+    # Đếm số lượng thẻ được bao phủ bởi từng đầu đọc
+    tag_counts = np.zeros(len(readers))
+    for tag in tags:
+        for i, reader in enumerate(readers):
+            distance = np.linalg.norm(tag.position - reader.position)
+            if distance <= RFID_RADIUS:
+                tag_counts[i] += 1
+                break  # Một thẻ chỉ cần được bao phủ bởi một đầu đọc
+
+    # Tính độ lệch chuẩn của số lượng thẻ để đánh giá mức độ cân bằng tải
+    mean_tags = np.mean(tag_counts)
+    variance = np.var(tag_counts)
+    load_balance = 1 / (1 + variance)  # Công thức chuẩn hóa để load balance nằm trong khoảng (0, 1)
+
+    return load_balance

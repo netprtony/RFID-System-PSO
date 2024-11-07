@@ -14,7 +14,7 @@ MAX_RFID_READERS = 50
 COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.5  # Hệ số lực đẩy
-ATTRACTION_FORCE = 0.3  # Hệ số lực hút
+ATTRACTION_FORCE = 0.5  # Hệ số lực hút
 
 def initialize_readers_with_kmeans(TAGS, n_readers):
     # Lấy vị trí của các tag
@@ -178,7 +178,7 @@ def BieuDoReader(readers, tags):
     ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10, marker='x')
     ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    ax.text(0.75, 1.05, f'ITF: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    ax.text(0.75, 1.05, f'Reader: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     # Lấy vị trí của các reader có active = True
     active_reader_positions = np.array([reader.position for reader in readers if reader.active])
     ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
@@ -194,9 +194,12 @@ def BieuDoReader(readers, tags):
 def mainOptimization(tags, readers, sspso):
     while True:
         readers = sspso.optimize(tags, RFID_RADIUS)
+        BieuDoReader(readers, tags)
         adjust_readers_location_by_virtual_force(readers, tags)
+        BieuDoReader(readers, tags)
         #readers = selection_mechanism(tags, NUM_RFID_READERS)
-        readers = TRE(readers, tags, coverage_threshold=1.0, max_generations=10)
+        readers = TRE(readers, tags, calculate_covered_tags(readers, tags, RFID_RADIUS)/100, max_generations=10)
+        BieuDoReader(readers, tags)
         if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
             print("Optimization completed.")
             BieuDoReader(readers, tags)

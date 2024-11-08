@@ -22,7 +22,7 @@ class Readers:
         self.position = position
         self.velocity = np.random.rand(dim) * [0, 0.1]
         self.best_position = self.position.copy()
-        self.best_value = float('-inf')
+        self.best_value = 0
         self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
         self.active = True
 
@@ -52,7 +52,7 @@ class SSPSO:
         self.max_iter = max_iter
         self.readers = readers
         self.global_best_position = np.random.uniform(-1, 1, dim)
-        self.global_best_value = float('-inf')
+        self.global_best_value = 0
         self.best_positions = []
          # Biến đếm số vòng lặp fitness không đổi
         
@@ -78,7 +78,7 @@ class SSPSO:
                     LDB = calculate_load_balance(self.readers, TAGS)
                     print(f"COV: {COV}, ITF: {ITF}, LDB: {LDB}")
                     # Tính giá trị hàm mục tiêu
-                    fitness_value = fitness_function_basic(COV, ITF, LDB, 0.5, 0.3, 0.2, TAGS)
+                    fitness_value = fitness_function_basic(COV, ITF, LDB, TAGS, 0.5, 0.3, 0.2)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
 
                     if fitness_value > reader.best_value:  # Tối ưu hóa
@@ -112,11 +112,6 @@ class SSPSO:
                 print("Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
                 break 
     
-         # Sau khi hoàn thành vòng lặp tối ưu hóa, gắn lại các vị trí tốt nhất cho các đầu đọc
-        # for idx, reader in enumerate(self.readers):
-        #     reader.position = self.best_positions[idx]
-        #     print(f"Reader {idx + 1} - Optimized Position: {reader.position}")
-        #print(Style.BRIGHT + f"Tại vòng lặp thứ {bestIter + 1} đạt độ bao phủ :{bestCOV}, độ nhiễu :{bestITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         # Trả về danh sách đầu đọc với vị trí tối ưu
         return self.readers

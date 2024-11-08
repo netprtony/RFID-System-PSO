@@ -78,7 +78,7 @@ class SSPSO:
                     LDB = calculate_load_balance(self.readers, TAGS)
                     print(f"COV: {COV}, ITF: {ITF}, LDB: {LDB}")
                     # Tính giá trị hàm mục tiêu
-                    fitness_value = fitness_function_basic(COV, ITF, LDB, 0.5, 0.3, 0.2)
+                    fitness_value = fitness_function_basic(COV, ITF, LDB, 0.5, 0.3, 0.2, TAGS)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
 
                     if fitness_value > reader.best_value:  # Tối ưu hóa

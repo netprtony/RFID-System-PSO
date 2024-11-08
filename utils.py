@@ -12,32 +12,13 @@ def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
             covered_tags +=1
     COV = (covered_tags / total_tag) * 100
     return COV
+
 def countReaderActive(readers):
     count = 0
     for reader in readers:
         if reader.active:
             count += 1
     return count
-def calculate_uncovered_tags(tags, readers, rfid_radius):
-    """
-    Tính toán số lượng các tag không được bao phủ bởi bất kỳ reader nào.
-
-    Parameters:
-    - tags: Danh sách các đối tượng tag
-    - readers: Danh sách các đối tượng reader
-    - rfid_radius: Bán kính phủ sóng của reader
-
-    Returns:
-    - num_uncovered_tags: Số lượng các tag không được bao phủ
-    """
-    num_uncovered_tags = 0
-
-    for tag in tags:
-        covered = any(np.linalg.norm(tag.position - reader.position) <= rfid_radius for reader in readers)
-        if not covered:
-            num_uncovered_tags += 1
-
-    return num_uncovered_tags
 
 
 def calculate_interference_basic(readers, tags, rfid_radius):
@@ -60,7 +41,7 @@ def calculate_interference_basic(readers, tags, rfid_radius):
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     return ITF
 
-def fitness_function_basic(COV, ITF, LDB, w1, w2, w3): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF, LDB, w1, w2, w3, tags): # 23.optimizing_radio
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -72,7 +53,7 @@ def fitness_function_basic(COV, ITF, LDB, w1, w2, w3): # 23.optimizing_radio
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = (100 / (1 + (100 - COV) ** 2)) * w1 + (100 / (1 + ITF ** 2)) * w2 + (100 / (1 + (1 - LDB) ** 2)) * w3
+    fitness = COV/100 * w1 + (len(tags)/(len(tags)+ITF)) * w2 + LDB* w3
     return fitness
 
 

@@ -5,9 +5,7 @@ import matplotlib.animation as animation
 from sklearn.cluster import KMeans
 from classes import Readers
 from classes import  GRID_X, GRID_Y
-from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance
-from matplotlib.widgets import Button
-RFID_RADIUS = 3.69
+from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance, RFID_RADIUS
 UPDATE_INTERVAL = 500
 COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
@@ -62,6 +60,8 @@ def selection_mechanism(tags, initial_num_readers):
 
     return readers  # Trả về danh sách đầu đọc đã được chọn
 
+
+
 def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=5):
     no_change_iterations = 0
     last_coverage = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
@@ -96,8 +96,8 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
             reader.position += total_exclusion_force + total_attraction_force
 
             # Giới hạn vị trí trong không gian làm việc
-            reader.position[0] = np.clip(reader.position[0], 0, GRID_X)
-            reader.position[1] = np.clip(reader.position[1], 0, GRID_Y)
+            reader.position[0] = np.clip(reader.position[0], RFID_RADIUS/2, GRID_X - RFID_RADIUS/2)
+            reader.position[1] = np.clip(reader.position[1], RFID_RADIUS/2, GRID_Y - RFID_RADIUS/2)
 
         # Tính tỷ lệ thẻ được bao phủ
         coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
@@ -173,12 +173,16 @@ def BieuDoReader(readers, tags):
 
     # Lấy vị trí của các tag
     tag_positions = np.array([tag.position for tag in tags])
-    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=20, marker='x')
+    tag_colors = ['green' if any(np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS for reader in readers if reader.active) else 'blue' for tag in tags]
+    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color=tag_colors, label='Tags', s=20, marker='x')
+
+    # Thêm thông tin về độ phủ, nhiễu và số lượng đầu đọc
     ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     ax.text(0.75, 1.05, f'Reader: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    
     # Lấy vị trí của các reader có active = True
-    active_reader_positions = np.array([reader.position for reader in readers if reader.active])
+    active_reader_positions = np.array([reader.position for reader in readers])
     ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
 
     # Vẽ các vòng tròn phạm vi phủ sóng của các reader có active = True
@@ -196,8 +200,6 @@ def mainOptimization(tags, readers, sspso):
         adjust_readers_location_by_virtual_force(readers, tags)
         BieuDoReader(readers, tags)
         readers = Redundant_Reader_Elimination(readers, tags)
-        BieuDoReader(readers, tags)
-        readers = add_readers_at_uncovered_clusters(tags, readers, len(readers))
         BieuDoReader(readers, tags)
         if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
             print("Optimization completed.")
@@ -227,7 +229,8 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.8, interfer
     initial_interference = calculate_interference_basic(readers, tags) 
     initial_LoadBalance = calculate_load_balance(readers, tags)
     initial_fitness = fitness_function_basic(initial_coverage, initial_interference, initial_LoadBalance, tags, w1, w2, w3)
-    
+    readers_to_remove = []
+
     for i, reader in enumerate(readers):
         if reader.active:
             # Tạm thời tắt đầu đọc
@@ -248,30 +251,62 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.8, interfer
                 interference_reduction < interference_threshold and
                 fitness_reduction < fitness_threshold):
                 print(Fore.GREEN + f"Đã loại bỏ thành công đầu đọc {i}.")
+                readers_to_remove.append(reader)
             else:
                 # Khôi phục đầu đọc nếu không thỏa mãn các tiêu chí
                 reader.active = True
-                print(Fore.GREEN + f"Đã khôi phục đầu đọc {i} vì không đủ tiêu chí.")
+
+    for reader in readers_to_remove:
+        readers.remove(reader)
 
     return readers
 
-def add_readers_at_uncovered_clusters(tags, readers, num_clusters):
-    # Lọc các tags chưa được bao phủ
-    uncovered_tags = [tag for tag in tags if not tag.covered]
-    
-    if not uncovered_tags:
-        return readers
+def extra_mechanism(readers, uncovered_tags, initial_num_readers, coverage_threshold=1.0):
+    """
+    Thêm các readers sử dụng thuật toán k-means đối với những tag chưa được bao phủ
+    cho đến khi đạt ngưỡng bao phủ là 1.
 
-    # Lấy vị trí của các tags chưa được bao phủ
-    uncovered_positions = np.array([tag.position for tag in uncovered_tags])
+    Parameters:
+    - readers: Danh sách các đối tượng reader hiện tại
+    - uncovered_tags: Danh sách các đối tượng tag chưa được bao phủ
+    - initial_num_readers: Số lượng đầu đọc hiện tại
+    - coverage_threshold: Ngưỡng bao phủ (mặc định là 1.0)
 
-    # Sử dụng KMeans để tìm các tâm cụm
-    kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(uncovered_positions)
-    cluster_centers = kmeans.cluster_centers_
+    Returns:
+    - readers: Danh sách các đối tượng reader đã được bổ sung
+    """
+    num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
 
-    # Tạo các đầu đọc tại các vị trí tâm cụm và thêm vào list readers
-    for center in cluster_centers:
-        new_reader = Readers(position=center)
-        readers.append(new_reader)
+    while True:
+        # Sử dụng k-means để tìm vị trí mới cho các đầu đọc
+        kmeans = KMeans(n_clusters=num_readers, random_state=0).fit([tag.position for tag in uncovered_tags])
+        new_reader_positions = kmeans.cluster_centers_
+
+        # Thêm các đầu đọc mới vào danh sách readers
+        for pos in new_reader_positions:
+            new_reader = Readers(position=pos)
+            readers.append(new_reader)
+            print(f"Thêm đầu đọc mới tại vị trí {new_reader.position}.")
+
+        # Kiểm tra độ bao phủ của tất cả các thẻ
+        for tag in uncovered_tags:
+            tag.covered = False  # Đặt trạng thái chưa được bao phủ
+
+            # Kiểm tra xem thẻ có nằm trong vùng phủ sóng của bất kỳ đầu đọc nào không
+            for reader in readers:
+                if np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS:
+                    tag.covered = True
+                    break
+
+        # Tính tỷ lệ thẻ được bao phủ
+        coverage_ratio = calculate_covered_tags(readers, uncovered_tags, RFID_RADIUS) / 100
+        print(f"Độ bao phủ: {coverage_ratio}")
+        BieuDoReader(readers, uncovered_tags)
+        # Kiểm tra nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
+        if coverage_ratio >= coverage_threshold:
+            break
+
+        # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
+        num_readers += 1
 
     return readers

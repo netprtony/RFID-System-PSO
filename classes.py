@@ -1,8 +1,8 @@
 import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
-from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, calculate_load_balance # Import from utils.py
-GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
+from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, calculate_load_balance, RFID_RADIUS# Import from utils.py
+GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:
@@ -41,9 +41,8 @@ class Readers:
     def update_position(self):
         self.position += self.velocity
 
-        # Giới hạn vị trí trong khoảng [0, GRID_X] và [0, GRID_Y]
-        self.position[0] = np.clip(self.position[0], 0, GRID_X)
-        self.position[1] = np.clip(self.position[1], 0, GRID_Y)
+        self.position[0] = np.clip(self.position[0], RFID_RADIUS/2, GRID_X - RFID_RADIUS/2)
+        self.position[1] = np.clip(self.position[1], RFID_RADIUS/2, GRID_Y - RFID_RADIUS/2)
 
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter, readers):

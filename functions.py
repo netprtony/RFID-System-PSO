@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 from sklearn.cluster import KMeans
 from classes import Readers
 from classes import  GRID_X, GRID_Y
-from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive
+from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance
 from matplotlib.widgets import Button
 RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
@@ -175,9 +175,9 @@ def BieuDoReader(readers, tags):
 
     # Lấy vị trí của các tag
     tag_positions = np.array([tag.position for tag in tags])
-    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=10, marker='x')
+    ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color='blue', label='Tags', s=20, marker='x')
     ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
+    ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     ax.text(0.75, 1.05, f'Reader: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
     # Lấy vị trí của các reader có active = True
     active_reader_positions = np.array([reader.position for reader in readers if reader.active])
@@ -198,7 +198,7 @@ def mainOptimization(tags, readers, sspso):
         adjust_readers_location_by_virtual_force(readers, tags)
         BieuDoReader(readers, tags)
         #readers = selection_mechanism(tags, NUM_RFID_READERS)
-        readers = TRE(readers, tags, calculate_covered_tags(readers, tags, RFID_RADIUS)/100, max_generations=10)
+        readers = Redundant_Reader_Elimination(readers, tags)
         BieuDoReader(readers, tags)
         if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
             print("Optimization completed.")
@@ -206,66 +206,52 @@ def mainOptimization(tags, readers, sspso):
             break
     
 
-def TRE(readers, tags, coverage_threshold=1.0, max_generations=10):
+def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.8, interference_threshold = 10,  fitness_threshold=1, w1=0.5, w2=0.3, w3=0.2):
     """
-    Hàm Loại bỏ đầu đọc tạm thời (TRE) để giảm số lượng đầu đọc RFID mà vẫn đảm bảo độ phủ sóng.
-    
+    Loại bỏ các đầu đọc dư thừa dựa trên ba tiêu chí:
+    1. Giảm ít hơn 1% tỷ lệ bao phủ và tổng tỷ lệ bao phủ không giảm dưới 90%.
+    2. Giảm nhiễu hơn 10%.
+    3. Giảm giá trị hàm fitness ít hơn 1%.
+
     Parameters:
-    - readers: danh sách các đối tượng Readers
-    - tags: danh sách các đối tượng Tags
-    - coverage_threshold: ngưỡng độ phủ yêu cầu (mặc định là 1.0 cho 100%)
-    - max_generations: số lượng thế hệ tối đa để kiểm tra độ phủ
-    
+    - readers: Danh sách các đối tượng reader
+    - tags: Danh sách các đối tượng tag
+    - coverage_threshold: Ngưỡng tỷ lệ bao phủ tối thiểu (mặc định là 90%)
+    - interference_threshold: Ngưỡng giảm nhiễu tối thiểu (mặc định là 10%)
+    - fitness_threshold: Ngưỡng giảm giá trị hàm fitness tối thiểu (mặc định là 1%)
+    - w1, w2, w3: Trọng số cho các thành phần độ phủ, nhiễu và cân bằng tải
+
     Returns:
-    - readers: danh sách các đối tượng Readers sau khi loại bỏ đầu đọc dư thừa
+    - readers: Danh sách các đối tượng reader sau khi loại bỏ các đầu đọc dư thừa
     """
-    # Kiểm tra độ phủ ban đầu
-    initial_coverage = calculate_covered_tags(readers, tags)/100
-    if initial_coverage < coverage_threshold:
-        print("Độ phủ ban đầu không đạt yêu cầu.")
-        return readers  # Không loại bỏ nếu không đạt độ phủ ban đầu
+    initial_coverage = calculate_covered_tags(readers, tags)
+    initial_interference = calculate_interference_basic(readers, tags) 
+    initial_LoadBalance = calculate_load_balance(readers, tags)
+    initial_fitness = fitness_function_basic(initial_coverage, initial_interference, initial_LoadBalance, tags, w1, w2, w3)
+    
+    for i, reader in enumerate(readers):
+        if reader.active:
+            # Tạm thời tắt đầu đọc
+            reader.active = False
 
-    # Loại bỏ đầu đọc dư thừa từng bước
-    generations_without_improvement = 0
-    while generations_without_improvement < max_generations:
-        # Tìm đầu đọc ít quan trọng nhất và loại bỏ nó tạm thời
-        least_important_reader = find_least_important_reader(readers, tags)
-        if least_important_reader == -1:
-            break  # Không còn đầu đọc nào có thể loại bỏ
+            # Tính toán lại các giá trị
+            new_coverage = calculate_covered_tags(readers, tags)
+            new_interference = calculate_interference_basic(readers, tags)
+            new_LoadBalance = calculate_load_balance(readers, tags)
+            new_fitness = fitness_function_basic(new_coverage, new_interference, new_LoadBalance, tags, w1, w2, w3)
+           
+            # Kiểm tra các tiêu chí
+            coverage_reduction = initial_coverage - new_coverage
+            interference_reduction = initial_interference - new_interference
+            fitness_reduction = initial_fitness - new_fitness
 
-        # Tắt đầu đọc
-        readers[least_important_reader].active = False
-        
-        # Tính độ phủ sau khi loại bỏ
-        current_coverage = calculate_covered_tags(readers, tags)/100
-        
-        if current_coverage >= coverage_threshold:
-            # Độ phủ vẫn đạt yêu cầu, giữ đầu đọc này tắt
-            generations_without_improvement = 0
-            print(Fore.GREEN + f"Đã loại bỏ thành công đầu đọc {least_important_reader}.")
-            BieuDoReader(readers, tags)
-        else:
-            print(Fore.LIGHTBLUE_EX + f"Khôi phục đầu đọc {least_important_reader}.")
-            # Độ phủ giảm dưới ngưỡng, khôi phục đầu đọc
-            readers[least_important_reader].active = True
-            generations_without_improvement += 1
+            if (coverage_reduction < 1 and new_coverage >= coverage_threshold and
+                interference_reduction < interference_threshold and
+                fitness_reduction < fitness_threshold):
+                print(Fore.GREEN + f"Đã loại bỏ thành công đầu đọc {i}.")
+            else:
+                # Khôi phục đầu đọc nếu không thỏa mãn các tiêu chí
+                reader.active = True
+                print(Fore.GREEN + f"Đã khôi phục đầu đọc {i} vì không đủ tiêu chí.")
 
     return readers
-
-def find_least_important_reader(readers, tags):
-    # Tìm đầu đọc phủ sóng ít thẻ nhất
-    min_covered_count = float('inf')
-    min_reader_idx = -1
-
-    for i, reader in enumerate(readers):
-        if reader.active:  # Chỉ xem xét đầu đọc đang hoạt động
-            covered_tags = set()
-            for tag in tags:
-                distance = np.linalg.norm(reader.position - tag.position)
-                if distance <= reader.max_velocity:
-                    covered_tags.add(tag)
-
-            if len(covered_tags) < min_covered_count:
-                min_covered_count = len(covered_tags)
-                min_reader_idx = i
-    return min_reader_idx

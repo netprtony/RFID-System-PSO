@@ -9,8 +9,6 @@ from utils import calculate_covered_tags, calculate_interference_basic,countRead
 from matplotlib.widgets import Button
 RFID_RADIUS = 3.69
 UPDATE_INTERVAL = 500
-NUM_RFID_READERS = 35
-MAX_RFID_READERS = 50
 COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.5  # Hệ số lực đẩy
@@ -52,7 +50,7 @@ def selection_mechanism(tags, initial_num_readers):
 
         # Tính tỷ lệ thẻ được bao phủ
         coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
-        print(Fore.MAGENTA + f"Độ bao phủ: {coverage_ratio}")
+        print(Fore.MAGENTA + Style.BRIGHT + f"Độ bao phủ: {coverage_ratio}")
 
         # Kiểm tra nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
         if coverage_ratio >= COVER_THRESHOLD:
@@ -197,8 +195,9 @@ def mainOptimization(tags, readers, sspso):
         BieuDoReader(readers, tags)
         adjust_readers_location_by_virtual_force(readers, tags)
         BieuDoReader(readers, tags)
-        #readers = selection_mechanism(tags, NUM_RFID_READERS)
         readers = Redundant_Reader_Elimination(readers, tags)
+        BieuDoReader(readers, tags)
+        readers = add_readers_at_uncovered_clusters(tags, readers, len(readers))
         BieuDoReader(readers, tags)
         if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
             print("Optimization completed.")
@@ -253,5 +252,26 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.8, interfer
                 # Khôi phục đầu đọc nếu không thỏa mãn các tiêu chí
                 reader.active = True
                 print(Fore.GREEN + f"Đã khôi phục đầu đọc {i} vì không đủ tiêu chí.")
+
+    return readers
+
+def add_readers_at_uncovered_clusters(tags, readers, num_clusters):
+    # Lọc các tags chưa được bao phủ
+    uncovered_tags = [tag for tag in tags if not tag.covered]
+    
+    if not uncovered_tags:
+        return readers
+
+    # Lấy vị trí của các tags chưa được bao phủ
+    uncovered_positions = np.array([tag.position for tag in uncovered_tags])
+
+    # Sử dụng KMeans để tìm các tâm cụm
+    kmeans = KMeans(n_clusters=num_clusters, random_state=0).fit(uncovered_positions)
+    cluster_centers = kmeans.cluster_centers_
+
+    # Tạo các đầu đọc tại các vị trí tâm cụm và thêm vào list readers
+    for center in cluster_centers:
+        new_reader = Readers(position=center)
+        readers.append(new_reader)
 
     return readers

@@ -1,5 +1,5 @@
-from classes import Tags, Readers, SSPSO, GRID_X, GRID_Y
-from functions import BieuDotags, BieuDoReader, RFID_RADIUS, selection_mechanism, mainOptimization
+from classes import Tags, SSPSO
+from functions import selection_mechanism, mainOptimization
 
 NUM_INDIVIDUALS = 100
 NUM_ITERATION = 100

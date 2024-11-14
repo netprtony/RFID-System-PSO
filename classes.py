@@ -2,7 +2,7 @@ import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
 from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, calculate_load_balance, RFID_RADIUS# Import from utils.py
-GRID_X, GRID_Y = 50, 30  # Kích thước của lớp học
+GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:
@@ -36,8 +36,7 @@ class Readers:
         # Tính toán tốc độ mới và ràng buộc nó theo giới hạn tối đa
         new_velocity = w * self.velocity + cognitive_component + social_component
         self.velocity = np.clip(new_velocity, -self.max_velocity, self.max_velocity)
-        self.velocity = constrain_velocity(self.velocity, GRID_Y, 0)
-
+        #self.velocity = constrain_velocity(self.velocity, GRID_Y, 0)
     def update_position(self):
         self.position += self.velocity
 
@@ -56,6 +55,8 @@ class SSPSO:
          # Biến đếm số vòng lặp fitness không đổi
         
     def optimize(self, TAGS, RFID_RADIUS):
+        chaos_value = np.random.rand()  # Khởi tạo giá trị hỗn loạn ban đầu
+        mu = 4  # Hằng số hỗn loạn
         stagnant_iterations = 0
         print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
         for i, reader in enumerate(self.readers):
@@ -66,6 +67,10 @@ class SSPSO:
             print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
              # Flag để kiểm tra nếu fitness_value không thay đổi trong vòng lặp này
             fitness_changed = False
+            # Cập nhật giá trị hỗn loạn
+            chaos_value = mu * chaos_value * (1 - chaos_value)
+            w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
+            
             for reader in self.readers:
                 if reader.active:
                     print(f"Reader {j + 1}")
@@ -79,7 +84,7 @@ class SSPSO:
                     # Tính giá trị hàm mục tiêu
                     fitness_value = fitness_function_basic(COV, ITF, LDB, TAGS, 0.5, 0.3, 0.2)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
-
+                    w *=  chaos_value
                     if fitness_value > reader.best_value:  # Tối ưu hóa
                         reader.best_position = reader.position.copy()
                         reader.best_value = fitness_value
@@ -92,14 +97,14 @@ class SSPSO:
                         # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
                         self.best_positions = [reader.position.copy() for reader in self.readers]
                         fitness_changed = True  # Đánh dấu có thay đổi fitness
-
-                    w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
-                    reader.update_velocity(self.global_best_position, w)
+                    reader.update_velocity(self.global_best_position, w, chaos_value)
                     print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")
                 
                     reader.update_position()
                     print(Fore.BLUE +f"    Ví trí mới : {reader.position}")
                     j+=1
+            
+            
             # Kiểm tra nếu fitness_value không thay đổi
             if fitness_changed:
                 stagnant_iterations = 0  # Reset đếm nếu có thay đổi fitness
@@ -114,3 +119,72 @@ class SSPSO:
         print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         # Trả về danh sách đầu đọc với vị trí tối ưu
         return self.readers
+    
+
+class CFNode:
+    def __init__(self):
+        self.N = 0  # Số lượng điểm trong cụm
+        self.LS = np.zeros(2)  # Tổng tuyến tính của các điểm
+        self.SS = np.zeros(2)  # Tổng bình phương của các điểm
+        self.children = []  # Các nút con
+        self.is_leaf = True
+
+    def add_point(self, point):
+        self.N += 1
+        self.LS += point
+        self.SS += point ** 2
+
+    def centroid(self):
+        return self.LS / self.N if self.N > 0 else np.zeros(2)
+
+    def radius(self):
+        if self.N == 0:
+            return 0
+        return np.sqrt(np.sum(self.SS / self.N - (self.LS / self.N) ** 2))
+    
+
+class CFTree:
+    def __init__(self, threshold):
+        self.root = CFNode()
+        self.threshold = threshold
+
+    def insert(self, tag):
+        current_node = self.root
+
+        # Tìm nút con phù hợp
+        while not current_node.is_leaf:
+            distances = [np.linalg.norm(tag.position - child.centroid()) for child in current_node.children]
+            closest_child = current_node.children[np.argmin(distances)]
+            current_node = closest_child
+
+        # Thêm điểm vào nút lá
+        if current_node.radius() + np.linalg.norm(tag.position - current_node.centroid()) <= self.threshold:
+            current_node.add_point(tag.position)
+        else:
+            # Tạo nút mới nếu không khớp
+            new_node = CFNode()
+            new_node.add_point(tag.position)
+            current_node.children.append(new_node)
+
+        # Kiểm tra và xây dựng lại cây nếu vượt ngưỡng
+        if len(current_node.children) > self.threshold:
+            self.rebuild()
+
+    def rebuild(self):
+        # Hàm xây dựng lại cây với ngưỡng lớn hơn
+        self.threshold *= 1.5
+        new_root = CFNode()
+        for child in self.root.children:
+            new_root.add_point(child.centroid())
+        self.root = new_root
+
+def birch_clustering(tags, threshold=10):
+    cf_tree = CFTree(threshold)
+
+    # Chèn từng thẻ vào CFTree
+    for tag in tags:
+        cf_tree.insert(tag)
+
+    # Xuất ra các cụm với tâm cụm
+    clusters = [node.centroid() for node in cf_tree.root.children]
+    return clusters

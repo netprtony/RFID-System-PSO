@@ -183,7 +183,10 @@ def BieuDoReader(readers, tags):
     
     # Lấy vị trí của các reader có active = True
     active_reader_positions = np.array([reader.position for reader in readers])
-    ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
+    if active_reader_positions.size > 0:
+        # Đảm bảo rằng active_reader_positions là một mảng 2 chiều
+        active_reader_positions = active_reader_positions.reshape(-1, 2)
+        ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
 
     # Vẽ các vòng tròn phạm vi phủ sóng của các reader có active = True
     circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in active_reader_positions]
@@ -207,7 +210,7 @@ def mainOptimization(tags, readers, sspso):
             break
     
 
-def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.8, interference_threshold = 10,  fitness_threshold=1, w1=0.5, w2=0.3, w3=0.2):
+def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.9, interference_threshold = 10,  fitness_threshold=1, w1=0.5, w2=0.3, w3=0.2):
     """
     Loại bỏ các đầu đọc dư thừa dựa trên ba tiêu chí:
     1. Giảm ít hơn 1% tỷ lệ bao phủ và tổng tỷ lệ bao phủ không giảm dưới 90%.

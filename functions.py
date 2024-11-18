@@ -9,8 +9,13 @@ from utils import calculate_covered_tags, calculate_interference_basic,countRead
 UPDATE_INTERVAL = 500
 COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
-EXCLUSION_FORCE = 0.5  # Hệ số lực đẩy
-ATTRACTION_FORCE = 0.5  # Hệ số lực hút
+EXCLUSION_FORCE = 0.2 # Hệ số lực đẩy
+ATTRACTION_FORCE = 1  # Hệ số lực hút
+
+# Định nghĩa hằng số cho lực
+REPULSION_FORCE_COEF = 1.0  # Hệ số lực đẩy
+ATTRACTION_FORCE_COEF = 0.5  # Hệ số lực hút
+IDEAL_DISTANCE = 10.0 # Khoảng cách lý tưởng giữa các đầu đọc
 
 def initialize_readers_with_kmeans(TAGS, n_readers):
     # Lấy vị trí của các tag
@@ -62,7 +67,7 @@ def selection_mechanism(tags, initial_num_readers):
 
 
 
-def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=5):
+def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=10):
     no_change_iterations = 0
     last_coverage = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
 
@@ -94,7 +99,26 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
 
             # 3. Cập nhật vị trí đầu đọc dựa trên lực tổng hợp
             reader.position += total_exclusion_force + total_attraction_force
-
+            uncovered_tags = [tag for tag in tags if not any(reader.covers(tag) for reader in readers)]
+    
+            # for tag in uncovered_tags:
+            #     nearest_readers = sorted(readers, key=lambda reader: reader.distance_to(tag))
+            #     covered = False
+                
+            #     for reader in nearest_readers:
+            #         original_position = reader.position
+            #         reader.move_towards(tag)
+                    
+            #         if reader.covers(tag):
+            #             covered = True
+            #             break
+            #         else:
+            #             reader.position = original_position
+                
+            #     if not covered:
+            #         new_reader = Readers(position=tag.position)
+            #         readers.append(new_reader)
+        
             # Giới hạn vị trí trong không gian làm việc
             reader.position[0] = np.clip(reader.position[0], RFID_RADIUS/2, GRID_X - RFID_RADIUS/2)
             reader.position[1] = np.clip(reader.position[1], RFID_RADIUS/2, GRID_Y - RFID_RADIUS/2)
@@ -111,10 +135,13 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
         if no_change_iterations >= max_no_change_iterations:
             print(f"Stopping early after {no_change_iterations} iterations due to no change in coverage.")
             break
+        # if coverage_ratio == 80:
+        #     break
 
         last_coverage = coverage_ratio  
         #BieuDoReader(readers, tags)
     print(f"Final coverage: {last_coverage}")
+    return readers
 
 def BieuDotags(READERS, TAGS):
     fig, ax = plt.subplots()
@@ -200,7 +227,7 @@ def mainOptimization(tags, readers, sspso):
     while True:
         readers = sspso.optimize(tags, RFID_RADIUS)
         BieuDoReader(readers, tags)
-        adjust_readers_location_by_virtual_force(readers, tags)
+        readers = adjust_readers_location_by_virtual_force(readers, tags)
         BieuDoReader(readers, tags)
         readers = Redundant_Reader_Elimination(readers, tags)
         BieuDoReader(readers, tags)
@@ -210,7 +237,7 @@ def mainOptimization(tags, readers, sspso):
             break
     
 
-def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.9, interference_threshold = 10,  fitness_threshold=1, w1=0.5, w2=0.3, w3=0.2):
+def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interference_threshold = 10,  fitness_threshold=0.1, w1=0.5, w2=0.3, w3=0.2):
     """
     Loại bỏ các đầu đọc dư thừa dựa trên ba tiêu chí:
     1. Giảm ít hơn 1% tỷ lệ bao phủ và tổng tỷ lệ bao phủ không giảm dưới 90%.
@@ -250,7 +277,7 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=0.9, interfer
             interference_reduction = initial_interference - new_interference
             fitness_reduction = initial_fitness - new_fitness
 
-            if (coverage_reduction < 1 and new_coverage >= coverage_threshold and
+            if (coverage_reduction < coverage_threshold and new_coverage >= 80 and
                 interference_reduction < interference_threshold and
                 fitness_reduction < fitness_threshold):
                 print(Fore.GREEN + f"Đã loại bỏ thành công đầu đọc {i}.")
@@ -312,4 +339,55 @@ def extra_mechanism(readers, uncovered_tags, initial_num_readers, coverage_thres
         # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
         num_readers += 1
 
+    return readers
+
+def compute_distance(reader1, reader2):
+    """Tính khoảng cách Euclidean giữa hai đầu đọc."""
+    return np.linalg.norm(reader1.position - reader2.position)
+
+def compute_repulsion_force(reader1, reader2):
+    """Tính lực đẩy giữa hai đầu đọc nếu khoảng cách nhỏ hơn khoảng cách lý tưởng."""
+    distance = compute_distance(reader1, reader2)
+    if distance < IDEAL_DISTANCE:
+        # Lực đẩy tỷ lệ nghịch với khoảng cách
+        force_magnitude = REPULSION_FORCE_COEF * (1 / distance - 1 / IDEAL_DISTANCE)
+        direction = (reader1.position - reader2.position) / distance
+        return force_magnitude * direction
+    return np.array([0.0, 0.0])
+
+def compute_attraction_force(reader1, reader2):
+    """Tính lực hút giữa hai đầu đọc nếu khoảng cách lớn hơn khoảng cách lý tưởng."""
+    distance = compute_distance(reader1, reader2)
+    if distance > IDEAL_DISTANCE:
+        # Lực hút tỷ lệ thuận với khoảng cách chênh lệch
+        force_magnitude = ATTRACTION_FORCE_COEF * (distance - IDEAL_DISTANCE)
+        direction = (reader2.position - reader1.position) / distance
+        return force_magnitude * direction
+    return np.array([0.0, 0.0])
+
+def apply_virtual_force_algorithm(readers):
+    """Hàm chính của VFA để tối ưu hóa vị trí của các đầu đọc."""
+    for i, reader in enumerate(readers):
+        # Tính tổng lực tác động lên mỗi đầu đọc
+        total_force = np.array([0.0, 0.0])
+        
+        for j, other_reader in enumerate(readers):
+            if i != j and other_reader.active:
+                # Tính lực đẩy giữa các đầu đọc
+                repulsion_force = compute_repulsion_force(reader, other_reader)
+                # Tính lực hút giữa các đầu đọc
+                attraction_force = compute_attraction_force(reader, other_reader)
+                # Tổng hợp lực
+                total_force += repulsion_force + attraction_force
+
+        # Cập nhật vận tốc và vị trí của đầu đọc dựa trên tổng lực
+        reader.velocity += total_force
+        # Giới hạn vận tốc để không vượt quá vận tốc tối đa
+        if np.linalg.norm(reader.velocity) > reader.max_velocity:
+            reader.velocity = (reader.velocity / np.linalg.norm(reader.velocity)) * reader.max_velocity
+        
+        # Cập nhật vị trí của đầu đọc
+        reader.position += reader.velocity
+
+    # Trả về danh sách đầu đọc với vị trí đã được tối ưu hóa
     return readers

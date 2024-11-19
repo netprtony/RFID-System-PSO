@@ -7,7 +7,7 @@ from classes import Readers
 from classes import  GRID_X, GRID_Y
 from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance, RFID_RADIUS
 UPDATE_INTERVAL = 500
-COVER_THRESHOLD = 1 # Ngưỡng bao phủ
+COVER_THRESHOLD = 0.95 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.2 # Hệ số lực đẩy
 ATTRACTION_FORCE = 1  # Hệ số lực hút
@@ -67,7 +67,7 @@ def selection_mechanism(tags, initial_num_readers):
 
 
 
-def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=10):
+def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=5):
     no_change_iterations = 0
     last_coverage = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
 
@@ -99,25 +99,6 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
 
             # 3. Cập nhật vị trí đầu đọc dựa trên lực tổng hợp
             reader.position += total_exclusion_force + total_attraction_force
-            uncovered_tags = [tag for tag in tags if not any(reader.covers(tag) for reader in readers)]
-    
-            # for tag in uncovered_tags:
-            #     nearest_readers = sorted(readers, key=lambda reader: reader.distance_to(tag))
-            #     covered = False
-                
-            #     for reader in nearest_readers:
-            #         original_position = reader.position
-            #         reader.move_towards(tag)
-                    
-            #         if reader.covers(tag):
-            #             covered = True
-            #             break
-            #         else:
-            #             reader.position = original_position
-                
-            #     if not covered:
-            #         new_reader = Readers(position=tag.position)
-            #         readers.append(new_reader)
         
             # Giới hạn vị trí trong không gian làm việc
             reader.position[0] = np.clip(reader.position[0], RFID_RADIUS/2, GRID_X - RFID_RADIUS/2)

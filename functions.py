@@ -7,7 +7,7 @@ from classes import Readers
 from classes import  GRID_X, GRID_Y
 from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance, RFID_RADIUS
 UPDATE_INTERVAL = 500
-COVER_THRESHOLD = 0.95 # Ngưỡng bao phủ
+COVER_THRESHOLD = 1 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.2 # Hệ số lực đẩy
 ATTRACTION_FORCE = 1  # Hệ số lực hút
@@ -16,52 +16,63 @@ ATTRACTION_FORCE = 1  # Hệ số lực hút
 REPULSION_FORCE_COEF = 1.0  # Hệ số lực đẩy
 ATTRACTION_FORCE_COEF = 0.5  # Hệ số lực hút
 IDEAL_DISTANCE = 10.0 # Khoảng cách lý tưởng giữa các đầu đọc
-
-def initialize_readers_with_kmeans(TAGS, n_readers):
-    # Lấy vị trí của các tag
-    tag_positions = np.array([tag.position for tag in TAGS])
-    
-    # Sử dụng thuật toán k-means để tìm các cluster center
-    kmeans = KMeans(n_clusters=n_readers, random_state=0).fit(tag_positions)
-    
-    # Đặt các reader tại các cluster center
-    reader_positions = kmeans.cluster_centers_
-    
-    # Khởi tạo các reader với vị trí mới
-    READERS = [Readers(position=pos) for pos in reader_positions]
+GRID_SIZE = 3.2
+def initialize_readers_with_kmeans(tags, num_readers):
+    """Khởi tạo vị trí đầu đọc sử dụng thuật toán KMeans."""
+    positions = np.array([tag.position for tag in tags])
+    kmeans = KMeans(n_clusters=num_readers, random_state=42).fit(positions)
+    return [Readers(position=center) for center in kmeans.cluster_centers_]
     
     return READERS
+def create_grid(grid_size, grid_x, grid_y):
+    """Tạo lưới các điểm trong không gian hoạt động."""
+    x_coords = np.arange(0, grid_x, grid_size)
+    y_coords = np.arange(0, grid_y, grid_size)
+    grid_points = np.array(np.meshgrid(x_coords, y_coords)).T.reshape(-1, 2)
+    return grid_points
 
-# Hàm Selection Mechanism for the Number of Readers
-def selection_mechanism(tags, initial_num_readers):
-    readers = []  # Danh sách để lưu các đầu đọc
+def snap_to_grid(position, grid_points):
+    """Đưa vị trí về điểm trên lưới gần nhất."""
+    distances = np.linalg.norm(grid_points - position, axis=1)
+    nearest_point = grid_points[np.argmin(distances)]
+    return nearest_point
+
+def selection_mechanism(tags, initial_num_readers, grid_x = GRID_X, grid_y = GRID_Y):
+    """Hàm chọn đầu đọc dựa trên KMeans và điều chỉnh vị trí về mắt lưới."""
+    readers = []  # Danh sách đầu đọc
     num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
 
-    while True:
-        # Khởi tạo các đầu đọc với vị trí ngẫu nhiên
-        readers = initialize_readers_with_kmeans(tags, num_readers)
-        
-        # Kiểm tra độ bao phủ của tất cả các thẻ
-        for tag in tags:
-            tag.covered = False  # Đặt trạng thái chưa được bao phủ
+    # Tạo lưới
+    #grid_points = create_grid(GRID_SIZE, grid_x, grid_y)
 
-            # Kiểm tra xem thẻ có nằm trong vùng phủ sóng của bất kỳ đầu đọc nào không
-            for reader in readers:
+    while True:
+        # Khởi tạo các đầu đọc với vị trí cụm từ KMeans
+        kmeans_readers = initialize_readers_with_kmeans(tags, num_readers)
+
+        # Điều chỉnh vị trí các đầu đọc về mắt lưới gần nhất
+        # for reader in kmeans_readers:
+        #     reader.position = snap_to_grid(reader.position, grid_points)
+
+        # Đặt trạng thái bao phủ của tất cả các thẻ
+        for tag in tags:
+            tag.covered = False
+            # Kiểm tra nếu thẻ nằm trong vùng phủ sóng của bất kỳ đầu đọc nào
+            for reader in kmeans_readers:
                 if np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS:
                     tag.covered = True
                     break
 
         # Tính tỷ lệ thẻ được bao phủ
-        coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100
-        print(Fore.MAGENTA + Style.BRIGHT + f"Độ bao phủ: {coverage_ratio}")
-
-        # Kiểm tra nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
+        coverage_ratio = calculate_covered_tags(kmeans_readers, tags, RFID_RADIUS) / 100
+        print(f"Độ bao phủ: {coverage_ratio:.2%}")
+        #BieuDoReader(kmeans_readers, tags)
+        # Nếu tỷ lệ bao phủ đạt yêu cầu, thoát khỏi vòng lặp
         if coverage_ratio >= COVER_THRESHOLD:
+            readers = kmeans_readers
             break
 
         # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
         num_readers += 1
-        #BieuDoReader(readers, tags)
 
     return readers  # Trả về danh sách đầu đọc đã được chọn
 
@@ -166,56 +177,66 @@ def BieuDotags(READERS, TAGS):
     ani = animation.FuncAnimation(fig, update_tag, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
     plt.show()
 
-def BieuDoReader(readers, tags):
+def BieuDoReader(readers, tags, title):
     """
-    Vẽ biểu đồ vị trí các đầu đọc và các thẻ.
+    Vẽ biểu đồ vị trí các đầu đọc và các thẻ với mặt lưới.
 
     Parameters:
-    - readers: Danh sách các đối tượng reader
-    - tags: Danh sách các đối tượng tag
+    - readers: Danh sách các đối tượng reader.
+    - tags: Danh sách các đối tượng tag.
     """
-    fig, ax = plt.subplots(figsize=(10, 8)) 
+    fig, ax = plt.subplots(figsize=(9, 8))
     ax.set_xlim(0, GRID_X)
     ax.set_ylim(0, GRID_Y)
     ax.set_aspect('equal', 'box')
 
-    # Lấy vị trí của các tag
+    # Hiển thị mặt lưới
+    ax.set_xticks(np.arange(0, GRID_X + 1, GRID_SIZE))
+    ax.set_yticks(np.arange(0, GRID_Y + 1, GRID_SIZE))
+    ax.grid(color='gray', linestyle='--', linewidth=0.5)
+
+    # Vẽ các thẻ
     tag_positions = np.array([tag.position for tag in tags])
-    tag_colors = ['green' if any(np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS for reader in readers if reader.active) else 'blue' for tag in tags]
+    tag_colors = ['red' if not any(np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS for reader in readers if reader.active) else 'green' for tag in tags]
     ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color=tag_colors, label='Tags', s=20, marker='x')
 
-    # Thêm thông tin về độ phủ, nhiễu và số lượng đầu đọc
-    ax.text(0.02, 1.05, f'COV: {calculate_covered_tags(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    ax.text(0.45, 1.05, f'ITF: {calculate_interference_basic(readers, tags, RFID_RADIUS):.2f}%', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    ax.text(0.75, 1.05, f'Reader: {countReaderActive(readers)}', transform=ax.transAxes, fontsize=12, verticalalignment='top')
-    
-    # Lấy vị trí của các reader có active = True
-    active_reader_positions = np.array([reader.position for reader in readers])
-    if active_reader_positions.size > 0:
-        # Đảm bảo rằng active_reader_positions là một mảng 2 chiều
-        active_reader_positions = active_reader_positions.reshape(-1, 2)
-        ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='red', label='Readers', marker='^')
+    # Vẽ các đầu đọc
+    active_reader_positions = np.array([reader.position for reader in readers if reader.active])
+    ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='blue', label='Readers', marker='^')
 
-    # Vẽ các vòng tròn phạm vi phủ sóng của các reader có active = True
-    circles = [plt.Circle((x, y), RFID_RADIUS, color='red', fill=True, alpha=0.2, linestyle='--') for x, y in active_reader_positions]
-    for circle in circles:
-        ax.add_artist(circle)
+    # Vẽ các vòng tròn phạm vi phủ sóng
+    for reader in readers:
+        if reader.active:
+            circle = plt.Circle(reader.position, RFID_RADIUS, color='black', fill=False, linestyle='-', linewidth=1, alpha=0.5)
+            ax.add_artist(circle)
 
-    ax.legend(bbox_to_anchor=(1.05, 0.5), loc='center left', borderaxespad=0.)
+    # Thêm thông tin độ phủ sóng, độ nhiễu và số lượng đầu đọc
+    coverage_ratio = calculate_covered_tags(readers, tags, RFID_RADIUS) / len(tags) * 100
+    interference = calculate_interference_basic(readers, tags, RFID_RADIUS)  # Phải định nghĩa hàm calculate_interference_basic
+    active_reader_count = sum(reader.active for reader in readers)
+
+    ax.text(GRID_X + 5, GRID_Y/2, f"Độ bao phủ: {coverage_ratio:.2f}%", fontsize=12, color="green")
+    ax.text(GRID_X + 5,  GRID_Y/2 + 2, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange")
+    ax.text(GRID_X + 5, GRID_Y/2 + 4, f"Số lượng đầu đọc: {active_reader_count}", fontsize=12, color="blue")
+
+
+    ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1))  # Đưa chú thích biểu đồ ra ngoài phía trên bên phải
+      # Đặt tiêu đề cho biểu đồ
+    fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     plt.show()
     
 def mainOptimization(tags, readers, sspso):
-    while True:
-        readers = sspso.optimize(tags, RFID_RADIUS)
-        BieuDoReader(readers, tags)
-        readers = adjust_readers_location_by_virtual_force(readers, tags)
-        BieuDoReader(readers, tags)
-        readers = Redundant_Reader_Elimination(readers, tags)
-        BieuDoReader(readers, tags)
-        if calculate_covered_tags(readers, tags, RFID_RADIUS) >= 100:
-            print("Optimization completed.")
-            BieuDoReader(readers, tags)
-            break
+    readers = sspso.optimize(tags, RFID_RADIUS)
+    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa")
+    readers = adjust_readers_location_by_virtual_force(readers, tags)
+    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo")
+    grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
+    for reader in readers:
+            reader.position = snap_to_grid(reader.position, grid_points)
+    BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới")            
+    readers = Redundant_Reader_Elimination(readers, tags)
+    BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa")
+    
     
 
 def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interference_threshold = 10,  fitness_threshold=0.1, w1=0.5, w2=0.3, w3=0.2):

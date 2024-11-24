@@ -16,7 +16,7 @@ ATTRACTION_FORCE = 1  # Hệ số lực hút
 REPULSION_FORCE_COEF = 1.0  # Hệ số lực đẩy
 ATTRACTION_FORCE_COEF = 0.5  # Hệ số lực hút
 IDEAL_DISTANCE = 10.0 # Khoảng cách lý tưởng giữa các đầu đọc
-GRID_SIZE = 3.2
+GRID_SIZE = 1.6
 def initialize_readers_with_kmeans(tags, num_readers):
     """Khởi tạo vị trí đầu đọc sử dụng thuật toán KMeans."""
     positions = np.array([tag.position for tag in tags])
@@ -43,15 +43,15 @@ def selection_mechanism(tags, initial_num_readers, grid_x = GRID_X, grid_y = GRI
     num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
 
     # Tạo lưới
-    #grid_points = create_grid(GRID_SIZE, grid_x, grid_y)
+    grid_points = create_grid(GRID_SIZE, grid_x, grid_y)
 
     while True:
         # Khởi tạo các đầu đọc với vị trí cụm từ KMeans
         kmeans_readers = initialize_readers_with_kmeans(tags, num_readers)
 
-        # Điều chỉnh vị trí các đầu đọc về mắt lưới gần nhất
-        # for reader in kmeans_readers:
-        #     reader.position = snap_to_grid(reader.position, grid_points)
+        #Điều chỉnh vị trí các đầu đọc về mắt lưới gần nhất
+        for reader in kmeans_readers:
+            reader.position = snap_to_grid(reader.position, grid_points)
 
         # Đặt trạng thái bao phủ của tất cả các thẻ
         for tag in tags:
@@ -215,25 +215,25 @@ def BieuDoReader(readers, tags, title):
     interference = calculate_interference_basic(readers, tags, RFID_RADIUS)  # Phải định nghĩa hàm calculate_interference_basic
     active_reader_count = sum(reader.active for reader in readers)
 
-    ax.text(GRID_X + 5, GRID_Y/2, f"Độ bao phủ: {coverage_ratio:.2f}%", fontsize=12, color="green")
-    ax.text(GRID_X + 5,  GRID_Y/2 + 2, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange")
-    ax.text(GRID_X + 5, GRID_Y/2 + 4, f"Số lượng đầu đọc: {active_reader_count}", fontsize=12, color="blue")
-
+    # Di chuyển các thông tin lên đầu biểu đồ
+    fig.text(0.3, 0.9, f"Độ bao phủ: {coverage_ratio:.2f}%", fontsize=12, color="green", ha='left', va='top')
+    fig.text(0.4, 0.9, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange", ha='left', va='top')
+    fig.text(0.6, 0.9, f"Số lượng đầu đọc: {active_reader_count}", fontsize=12, color="blue", ha='left', va='top')
 
     ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1))  # Đưa chú thích biểu đồ ra ngoài phía trên bên phải
-      # Đặt tiêu đề cho biểu đồ
+    # Đặt tiêu đề cho biểu đồ
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     plt.show()
     
 def mainOptimization(tags, readers, sspso):
     readers = sspso.optimize(tags, RFID_RADIUS)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa")
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa")
     readers = adjust_readers_location_by_virtual_force(readers, tags)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo")
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo")
     grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
     for reader in readers:
             reader.position = snap_to_grid(reader.position, grid_points)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới")            
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới")            
     readers = Redundant_Reader_Elimination(readers, tags)
     BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa")
     

@@ -6,9 +6,8 @@ GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
 class Tags:
-    def __init__(self, dim):
-        self.position = np.random.rand(dim) * [GRID_X, GRID_Y]
-        self.id = np.random.randint(2001210000, 2001220000)
+    def __init__(self, position):
+        self.position = position
         self.covered = False
 
     def update_position(self):

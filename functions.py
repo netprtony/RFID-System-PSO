@@ -224,29 +224,30 @@ def BieuDoReader(readers, tags, title, GRID_SIZE):
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     plt.show()
 
-def TongHopBieuDo(readers_list, tags, titles, GRID_SIZE):
+def TongHopBieuDo(readers_list, tags, titles, grid_sizes, grid_shape):
     """
-    Hiển thị tổng hợp nhiều biểu đồ con từ hàm BieuDoReader với danh sách thẻ dùng chung.
+    Hiển thị tổng hợp nhiều biểu đồ con từ hàm BieuDoReader với `GRID_SIZE` khác nhau.
 
     Parameters:
     - readers_list: Danh sách các danh sách đầu đọc (phân chia theo từng biểu đồ).
     - tags: Danh sách các thẻ (dùng chung cho tất cả biểu đồ).
     - titles: Danh sách tiêu đề cho từng biểu đồ con.
+    - grid_sizes: Danh sách GRID_SIZE khác nhau cho từng biểu đồ.
     - grid_shape: Tuple (rows, cols) xác định số hàng và cột trong lưới biểu đồ.
     """
-    rows, cols = 50, 50
-    fig, axes = plt.subplots(rows, cols, figsize=(15, 10))
+    rows, cols = grid_shape
+    fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 5))  # Điều chỉnh kích thước phù hợp
     axes = axes.flatten()  # Chuyển mảng 2D của axes thành 1D để duyệt dễ dàng
-    
-    for i, (readers, title, gird) in enumerate(zip(readers_list, titles, GRID_SIZE)):
+
+    for i, (readers, title, grid_size) in enumerate(zip(readers_list, titles, grid_sizes)):
         ax = axes[i]
         ax.set_xlim(0, GRID_X)
         ax.set_ylim(0, GRID_Y)
         ax.set_aspect('equal', 'box')
 
-        # Hiển thị mặt lưới
-        ax.set_xticks(np.arange(0, GRID_X + 1, gird))
-        ax.set_yticks(np.arange(0, GRID_Y + 1, gird))
+        # Hiển thị mặt lưới với `grid_size` cụ thể cho từng biểu đồ
+        ax.set_xticks(np.arange(0, GRID_X + 1, grid_size))
+        ax.set_yticks(np.arange(0, GRID_Y + 1, grid_size))
         ax.grid(color='gray', linestyle='--', linewidth=0.5)
 
         # Vẽ các thẻ
@@ -268,24 +269,24 @@ def TongHopBieuDo(readers_list, tags, titles, GRID_SIZE):
         ax.set_title(title, fontsize=12, fontweight='bold')
         ax.legend(loc='upper left')
 
-    # Ẩn các biểu đồ dư thừa nếu tổng số biểu đồ ít hơn số ô lưới
+    # Ẩn các subplot dư thừa nếu số biểu đồ ít hơn tổng số subplot
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
 
     plt.tight_layout()
     plt.show()
 
-def mainOptimization(tags, readers, sspso):
+def mainOptimization(tags, readers, sspso, GRID_SIZE):
     readers = sspso.optimize(tags, RFID_RADIUS)
-    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa")
+    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa", GRID_SIZE)
     readers = adjust_readers_location_by_virtual_force(readers, tags)
-    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo")
+    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
     grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
     for reader in readers:
             reader.position = snap_to_grid(reader.position, grid_points)
-    #BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới")            
+    BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)            
     readers = Redundant_Reader_Elimination(readers, tags)
-    #BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa")
+    BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)
     return readers
     
 

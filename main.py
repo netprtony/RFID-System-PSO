@@ -112,24 +112,16 @@ if __name__ == "__main__":
     for positions in tag_positions:
         tag = Tags(positions)
         tags.append(tag)
+    GRID_SIZE = 0.8
     #readers = [Readers(np.random.rand(2) * [50, 30]) for _ in range(NUM_RFID_READERS)]
-    readers_3_2 = selection_mechanism(tags, NUM_RFID_READERS, 3.2)
-    readers_1_6 = selection_mechanism(tags, NUM_RFID_READERS, 1.6)
-    readers_0_8 = selection_mechanism(tags, NUM_RFID_READERS, 0.8)
+    readers = selection_mechanism(tags, NUM_RFID_READERS, GRID_SIZE)
+
     #BieuDoReader(readers, tags, "Biểu đồ khởi tạo tâm cụm của các đầu đọc bằng K-means")
-    sspso_3_2 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers_3_2)
-    sspso_1_6 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers_1_6)
-    sspso_0_8 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers_0_8)
+    sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers)
+
     #readers = sspso.optimize(tags, 3.69)
-    readers_3_2 = mainOptimization(tags, readers_3_2, sspso_3_2)
-    readers_1_6 = mainOptimization(tags, readers_1_6, sspso_1_6)
-    readers_0_8 = mainOptimization(tags, readers_0_8, sspso_0_8)
-    all_reader = []
-    all_reader.append(readers_3_2)
-    all_reader.append(readers_1_6)
-    all_reader.append(readers_0_8)
-    tilte = ["3.2", "1.6", "0.8"]
-    GRID_SIZE = [3.2, 1.6, 0.8]
-    TongHopBieuDo(all_reader, tags, tilte, GRID_SIZE)
+    readers = mainOptimization(tags, readers, sspso, GRID_SIZE)
+
+    
     #BieuDoReader(readers, tags, "")
     

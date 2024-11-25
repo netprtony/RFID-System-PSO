@@ -23,7 +23,6 @@ def initialize_readers_with_kmeans(tags, num_readers):
     kmeans = KMeans(n_clusters=num_readers, random_state=42).fit(positions)
     return [Readers(position=center) for center in kmeans.cluster_centers_]
     
-    return READERS
 def create_grid(grid_size, grid_x, grid_y):
     """Tạo lưới các điểm trong không gian hoạt động."""
     x_coords = np.arange(0, grid_x, grid_size)
@@ -37,7 +36,7 @@ def snap_to_grid(position, grid_points):
     nearest_point = grid_points[np.argmin(distances)]
     return nearest_point
 
-def selection_mechanism(tags, initial_num_readers, grid_x = GRID_X, grid_y = GRID_Y):
+def selection_mechanism(tags, initial_num_readers, GRID_SIZE, grid_x = GRID_X, grid_y = GRID_Y):
     """Hàm chọn đầu đọc dựa trên KMeans và điều chỉnh vị trí về mắt lưới."""
     readers = []  # Danh sách đầu đọc
     num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
@@ -177,7 +176,7 @@ def BieuDotags(READERS, TAGS):
     ani = animation.FuncAnimation(fig, update_tag, frames=999999, interval=UPDATE_INTERVAL, blit=False, repeat=False)
     plt.show()
 
-def BieuDoReader(readers, tags, title):
+def BieuDoReader(readers, tags, title, GRID_SIZE):
     """
     Vẽ biểu đồ vị trí các đầu đọc và các thẻ với mặt lưới.
 
@@ -224,7 +223,58 @@ def BieuDoReader(readers, tags, title):
     # Đặt tiêu đề cho biểu đồ
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     plt.show()
+
+def TongHopBieuDo(readers_list, tags, titles, GRID_SIZE):
+    """
+    Hiển thị tổng hợp nhiều biểu đồ con từ hàm BieuDoReader với danh sách thẻ dùng chung.
+
+    Parameters:
+    - readers_list: Danh sách các danh sách đầu đọc (phân chia theo từng biểu đồ).
+    - tags: Danh sách các thẻ (dùng chung cho tất cả biểu đồ).
+    - titles: Danh sách tiêu đề cho từng biểu đồ con.
+    - grid_shape: Tuple (rows, cols) xác định số hàng và cột trong lưới biểu đồ.
+    """
+    rows, cols = 50, 50
+    fig, axes = plt.subplots(rows, cols, figsize=(15, 10))
+    axes = axes.flatten()  # Chuyển mảng 2D của axes thành 1D để duyệt dễ dàng
     
+    for i, (readers, title, gird) in enumerate(zip(readers_list, titles, GRID_SIZE)):
+        ax = axes[i]
+        ax.set_xlim(0, GRID_X)
+        ax.set_ylim(0, GRID_Y)
+        ax.set_aspect('equal', 'box')
+
+        # Hiển thị mặt lưới
+        ax.set_xticks(np.arange(0, GRID_X + 1, gird))
+        ax.set_yticks(np.arange(0, GRID_Y + 1, gird))
+        ax.grid(color='gray', linestyle='--', linewidth=0.5)
+
+        # Vẽ các thẻ
+        tag_positions = np.array([tag.position for tag in tags])
+        tag_colors = ['red' if not any(np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS for reader in readers if reader.active) else 'green' for tag in tags]
+        ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color=tag_colors, label='Tags', s=20, marker='x')
+
+        # Vẽ các đầu đọc
+        active_reader_positions = np.array([reader.position for reader in readers if reader.active])
+        ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='blue', label='Readers', marker='^')
+
+        # Vẽ các vòng tròn phạm vi phủ sóng
+        for reader in readers:
+            if reader.active:
+                circle = plt.Circle(reader.position, RFID_RADIUS, color='black', fill=False, linestyle='-', linewidth=1, alpha=0.5)
+                ax.add_artist(circle)
+
+        # Thêm tiêu đề cho từng biểu đồ con
+        ax.set_title(title, fontsize=12, fontweight='bold')
+        ax.legend(loc='upper left')
+
+    # Ẩn các biểu đồ dư thừa nếu tổng số biểu đồ ít hơn số ô lưới
+    for j in range(i + 1, len(axes)):
+        fig.delaxes(axes[j])
+
+    plt.tight_layout()
+    plt.show()
+
 def mainOptimization(tags, readers, sspso):
     readers = sspso.optimize(tags, RFID_RADIUS)
     #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa")
@@ -235,8 +285,8 @@ def mainOptimization(tags, readers, sspso):
             reader.position = snap_to_grid(reader.position, grid_points)
     #BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới")            
     readers = Redundant_Reader_Elimination(readers, tags)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa")
-    
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa")
+    return readers
     
 
 def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interference_threshold = 10,  fitness_threshold=0.1, w1=0.5, w2=0.3, w3=0.2):

@@ -7,7 +7,7 @@ from classes import Readers
 from classes import  GRID_X, GRID_Y
 from utils import calculate_covered_tags, calculate_interference_basic,countReaderActive, fitness_function_basic, calculate_load_balance, RFID_RADIUS
 UPDATE_INTERVAL = 500
-COVER_THRESHOLD = 1 # Ngưỡng bao phủ
+COVER_THRESHOLD = 0.8 # Ngưỡng bao phủ
 DIM = 2
 EXCLUSION_FORCE = 0.2 # Hệ số lực đẩy
 ATTRACTION_FORCE = 1  # Hệ số lực hút

@@ -75,8 +75,26 @@ def selection_mechanism(tags, initial_num_readers, COVER_THRESHOLD):
     return readers  # Trả về danh sách đầu đọc đã được chọn
 
 
+def BieuDoSoSanh(fitness_tracking):
+    # Tách dữ liệu từ fitness_tracking
+    iterations = [item[0] for item in fitness_tracking]
+    fitness_values = [item[1] for item in fitness_tracking]
+    # Plot
+    plt.figure(figsize=(10, 6))
+    plt.plot(iterations, fitness_values, marker='^', label='PSO', color='gray', linewidth=2)
 
-def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=10):
+    # Labels and legend
+    plt.xlabel('Số lượng đầu đọc phân bố trong vùng làm việc', fontsize=12)
+    plt.ylabel('Giá trị fitness', fontsize=12)
+    plt.title('So sánh giá trị fitness theo số lượng đầu đọc', fontsize=14)
+    plt.legend(fontsize=12)
+    plt.grid(True)
+
+    # Show the plot
+    plt.show()
+
+
+def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=50):
     no_change_iterations = 0
     best_fitness = -float('inf')
     best_positions = [reader.position.copy() for reader in readers]
@@ -238,7 +256,8 @@ def TongHopBieuDo(readers_list, tags, titles, grid_sizes, grid_shape):
     plt.show()
 
 def mainOptimization(tags, readers, sspso, GRID_SIZE):
-    readers = sspso.optimize(tags, RFID_RADIUS)
+    readers, fitness_tracking = sspso.optimize(tags, RFID_RADIUS)
+    BieuDoSoSanh(fitness_tracking)
     BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hội tụ ", GRID_SIZE)
     readers = adjust_readers_location_by_virtual_force(readers, tags)
     BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
@@ -248,6 +267,7 @@ def mainOptimization(tags, readers, sspso, GRID_SIZE):
     BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)            
     readers = Redundant_Reader_Elimination(readers, tags)
     BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)
+    
     return readers
     
 

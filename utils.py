@@ -35,8 +35,7 @@ def calculate_interference_basic(readers, tags, rfid_radius=RFID_RADIUS):
     """
     ITF = 0  # Tổng giá trị nhiễu
     for tag in tags:  # Duyệt qua tất cả các thẻ
-        antennas_covering_tag = sum(1 for reader in readers 
-                                        if np.linalg.norm(tag.position - reader.position) <= rfid_radius and reader.active)
+        antennas_covering_tag = sum(1 for reader in readers if np.linalg.norm(tag.position - reader.position) <= rfid_radius and reader.active)
         if antennas_covering_tag > 1:  # Nếu có hơn 1 ăng-ten phủ sóng thẻ
             ITF += (antennas_covering_tag - 1)  # Mỗi ăng-ten dư gây nhiễu
     ITF = (ITF / len(tags)) * 100  # Chuyển thành phần trăm

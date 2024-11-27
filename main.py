@@ -1,5 +1,5 @@
 from classes import Tags, SSPSO, Readers
-from functions import selection_mechanism, mainOptimization, TongHopBieuDo
+from functions import selection_mechanism, mainOptimization, BieuDoSoSanh
 import numpy as np
 NUM_TAGS = 265
 NUM_ITERATION = 100
@@ -112,17 +112,20 @@ if __name__ == "__main__":
     # for positions in tag_positions:
     #     tag = Tags(positions)
     #     tags.append(tag)
-    GRID_SIZE = 0.8
+
     #readers = [Readers(np.random.rand(2) * [50, 30]) for _ in range(NUM_RFID_READERS)]
     tags = [Tags(np.random.rand(2) * [50, 50]) for _ in range(NUM_TAGS)]
-    readers = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
-   
-    #BieuDoReader(readers, tags, "Biểu đồ khởi tạo tâm cụm của các đầu đọc bằng K-means")
-    sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers)
 
-    #readers = sspso.optimize(tags, 3.69)
-    readers = mainOptimization(tags, readers, sspso, GRID_SIZE)
-
+    readers3_2, tracking3_2 = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
+    sspso3_2 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers3_2)
+    readers, tracking = mainOptimization(tags, readers3_2, sspso3_2, 3.2, readers3_2)
     
-    #BieuDoReader(readers, tags, "")
+    readers1_6, tracking3_2 = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
+    sspso1_6 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers1_6)
+    readers, tracking1_6 = mainOptimization(tags, readers1_6, sspso1_6, 1.6, readers1_6)
+
+    readers0_8, tracking0_8 = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
+    sspso0_8 = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers0_8)
+    readers, tracking0_8 = mainOptimization(tags, readers0_8, sspso0_8, 0.8, readers0_8)
+    BieuDoSoSanh(tracking3_2, tracking1_6, tracking0_8)
     

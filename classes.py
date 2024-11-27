@@ -57,7 +57,7 @@ class SSPSO:
         chaos_value = np.random.rand()  # Khởi tạo giá trị hỗn loạn ban đầu
         mu = 4  # Hằng số hỗn loạn
         stagnant_iterations = 0
-        fitness_tracking = []  # Mảng lưu số vòng lặp và giá trị fitness tại mỗi 5 vòng lặp
+        #fitness_tracking = []  # Mảng lưu số vòng lặp và giá trị fitness tại mỗi 5 vòng lặp
         print("Các đầu đọc ở vị trí ngẫu nhiên ban đầu")
         for i, reader in enumerate(self.readers):
             if reader.active:
@@ -105,7 +105,7 @@ class SSPSO:
             
               # Theo dõi giá trị fitness tại mỗi 5 vòng lặp
             #if (i + 1) % 5 == 0:
-            fitness_tracking.append([i + 1, self.global_best_value])
+            #fitness_tracking.append([i + 1, self.global_best_value])
             # Kiểm tra nếu fitness_value không thay đổi
             if fitness_changed:
                 stagnant_iterations = 0  # Reset đếm nếu có thay đổi fitness
@@ -119,5 +119,5 @@ class SSPSO:
     
         print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         # Trả về danh sách đầu đọc với vị trí tối ưu
-        return self.readers, fitness_tracking
+        return self.readers
     

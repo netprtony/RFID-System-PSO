@@ -39,11 +39,12 @@ def selection_mechanism(tags, initial_num_readers, COVER_THRESHOLD):
     """Hàm chọn đầu đọc dựa trên KMeans và điều chỉnh vị trí về mắt lưới."""
     readers = []  # Danh sách đầu đọc
     num_readers = initial_num_readers  # Số lượng đầu đọc ban đầu
-
+    tracking = []
     #Tạo lưới
     #grid_points = create_grid(GRID_SIZE, grid_x, grid_y)
-
+    
     while True:
+        tracking.append([calculate_covered_tags(readers, tags), len(readers)])
         # Khởi tạo các đầu đọc với vị trí cụm từ KMeans
         kmeans_readers = initialize_readers_with_kmeans(tags, num_readers)
 
@@ -72,24 +73,28 @@ def selection_mechanism(tags, initial_num_readers, COVER_THRESHOLD):
         # Nếu không đạt, tăng số lượng đầu đọc và lặp lại
         num_readers += 1
 
-    return readers  # Trả về danh sách đầu đọc đã được chọn
+    return readers, tracking  # Trả về danh sách đầu đọc đã được chọn
 
 
-def BieuDoSoSanh(fitness_tracking):
-    # Tách dữ liệu từ fitness_tracking
-    iterations = [item[0] for item in fitness_tracking]
-    fitness_values = [item[1] for item in fitness_tracking]
+def BieuDoSoSanh(tracking3_2, tracking1_6, tracking0_8):
+    # Tách dữ liệu từ tracking
+    COV3_2 = [item[0] for item in tracking3_2]
+    readerNum3_2 = [item[1] for item in tracking3_2]
+    COV1_6 = [item[0] for item in tracking1_6]
+    readerNum1_6 = [item[1] for item in tracking1_6]
+    COV0_8 = [item[0] for item in tracking0_8]
+    readerNum0_8 = [item[1] for item in tracking0_8]
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(iterations, fitness_values, marker='^', label='PSO', color='gray', linewidth=2)
-
+    plt.plot(readerNum3_2, COV3_2, marker='^', label='Grid 3.2', color='gray', linewidth=2)
+    plt.plot(readerNum1_6, COV1_6, marker='^', label='Grid 1.6', color='red', linewidth=2)
+    plt.plot(readerNum0_8, COV0_8, marker='^', label='Grid 0.8', color='blue', linewidth=2)
     # Labels and legend
-    plt.xlabel('Số lượng đầu đọc phân bố trong vùng làm việc', fontsize=12)
-    plt.ylabel('Giá trị fitness', fontsize=12)
-    plt.title('So sánh giá trị fitness theo số lượng đầu đọc', fontsize=14)
+    plt.xlabel('Số lượng đầu đọc', fontsize=12)
+    plt.ylabel('Độ bao phủ', fontsize=12)
+    plt.title('So sánh độ bao phủ theo số lượng đầu đọc', fontsize=14)
     plt.legend(fontsize=12)
     plt.grid(True)
-
     # Show the plot
     plt.show()
 
@@ -255,20 +260,23 @@ def TongHopBieuDo(readers_list, tags, titles, grid_sizes, grid_shape):
     plt.tight_layout()
     plt.show()
 
-def mainOptimization(tags, readers, sspso, GRID_SIZE):
-    readers, fitness_tracking = sspso.optimize(tags, RFID_RADIUS)
-    BieuDoSoSanh(fitness_tracking)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hội tụ ", GRID_SIZE)
+def mainOptimization(tags, readers, sspso, GRID_SIZE, tracking):
+    readers = sspso.optimize(tags, RFID_RADIUS)
+    tracking.append([calculate_covered_tags(readers, tags), len(readers)])
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hội tụ", GRID_SIZE)
     readers = adjust_readers_location_by_virtual_force(readers, tags)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
+    tracking.append([calculate_covered_tags(readers, tags), len(readers)])
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
     grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
+    tracking.append([calculate_covered_tags(readers, tags), len(readers)])
     for reader in readers:
             reader.position = snap_to_grid(reader.position, grid_points)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)            
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)       
+    tracking.append([calculate_covered_tags(readers, tags), len(readers)])     
     readers = Redundant_Reader_Elimination(readers, tags)
-    BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)
-    
-    return readers
+    #BieuDoReader(readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)
+    tracking.append([calculate_covered_tags(readers, tags), len(readers)])
+    return readers, tracking
     
 
 def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interference_threshold = 10,  fitness_threshold=0.1, w1=0.5, w2=0.3, w3=0.2):

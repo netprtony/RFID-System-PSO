@@ -1,10 +1,10 @@
-from classes import Tags, SSPSO, birch_clustering, Readers, CFTree, CFNode
+from classes import Tags, SSPSO, Readers
 from functions import selection_mechanism, mainOptimization, TongHopBieuDo
 import numpy as np
 NUM_TAGS = 265
 NUM_ITERATION = 100
 DIM = 2
-NUM_RFID_READERS = 50
+NUM_RFID_READERS = 3
 if __name__ == "__main__":
     tag_positions = np.array([
     [22.54638082, 9.8100662],
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     GRID_SIZE = 0.8
     #readers = [Readers(np.random.rand(2) * [50, 30]) for _ in range(NUM_RFID_READERS)]
     tags = [Tags(np.random.rand(2) * [50, 50]) for _ in range(NUM_TAGS)]
-    readers = selection_mechanism(tags, NUM_RFID_READERS, GRID_SIZE)
+    readers = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
    
     #BieuDoReader(readers, tags, "Biểu đồ khởi tạo tâm cụm của các đầu đọc bằng K-means")
     sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers)

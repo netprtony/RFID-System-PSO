@@ -1,7 +1,7 @@
 import numpy as np
 from colorama import Fore, Style, init
 init(autoreset=True)
-from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, calculate_load_balance, RFID_RADIUS# Import from utils.py
+from utils import fitness_function_basic, calculate_covered_tags, constrain_velocity, calculate_interference_basic, calculate_inertia_weight, RFID_RADIUS# Import from utils.py
 GRID_X, GRID_Y = 50, 50  # Kích thước của lớp học
 MOVE_PERCENTAGE_MIN = 0.01
 MOVE_PERCENTAGE_MAX = 0.02
@@ -39,8 +39,8 @@ class Readers:
     def update_position(self):
         self.position += self.velocity
 
-        self.position[0] = np.clip(self.position[0], RFID_RADIUS/2, GRID_X - RFID_RADIUS/2)
-        self.position[1] = np.clip(self.position[1], RFID_RADIUS/2, GRID_Y - RFID_RADIUS/2)
+        self.position[0] = np.clip(self.position[0], 0, GRID_X)
+        self.position[1] = np.clip(self.position[1], 0, GRID_Y)
 
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter, readers):
@@ -78,10 +78,9 @@ class SSPSO:
                 
                     # Tính nhiễu
                     ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
-                    LDB = calculate_load_balance(self.readers, TAGS)
-                    print(f"COV: {COV}, ITF: {ITF}, LDB: {LDB}")
+                    print(f"COV: {COV}, ITF: {ITF}")
                     # Tính giá trị hàm mục tiêu
-                    fitness_value = fitness_function_basic(COV, ITF, LDB, TAGS, 0.5, 0.3, 0.2)
+                    fitness_value = fitness_function_basic(COV, ITF, TAGS, 0.8, 0.2)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
                     w *=  chaos_value
                     if fitness_value > reader.best_value:  # Tối ưu hóa
@@ -119,71 +118,3 @@ class SSPSO:
         # Trả về danh sách đầu đọc với vị trí tối ưu
         return self.readers
     
-
-class CFNode:
-    def __init__(self):
-        self.N = 0  # Số lượng điểm trong cụm
-        self.LS = np.zeros(2)  # Tổng tuyến tính của các điểm
-        self.SS = np.zeros(2)  # Tổng bình phương của các điểm
-        self.children = []  # Các nút con
-        self.is_leaf = True
-
-    def add_point(self, point):
-        self.N += 1
-        self.LS += point
-        self.SS += point ** 2
-
-    def centroid(self):
-        return self.LS / self.N if self.N > 0 else np.zeros(2)
-
-    def radius(self):
-        if self.N == 0:
-            return 0
-        return np.sqrt(np.sum(self.SS / self.N - (self.LS / self.N) ** 2))
-    
-
-class CFTree:
-    def __init__(self, threshold):
-        self.root = CFNode()
-        self.threshold = threshold
-
-    def insert(self, tag):
-        current_node = self.root
-
-        # Tìm nút con phù hợp
-        while not current_node.is_leaf:
-            distances = [np.linalg.norm(tag.position - child.centroid()) for child in current_node.children]
-            closest_child = current_node.children[np.argmin(distances)]
-            current_node = closest_child
-
-        # Thêm điểm vào nút lá
-        if current_node.radius() + np.linalg.norm(tag.position - current_node.centroid()) <= self.threshold:
-            current_node.add_point(tag.position)
-        else:
-            # Tạo nút mới nếu không khớp
-            new_node = CFNode()
-            new_node.add_point(tag.position)
-            current_node.children.append(new_node)
-
-        # Kiểm tra và xây dựng lại cây nếu vượt ngưỡng
-        if len(current_node.children) > self.threshold:
-            self.rebuild()
-
-    def rebuild(self):
-        # Hàm xây dựng lại cây với ngưỡng lớn hơn
-        self.threshold *= 1.5
-        new_root = CFNode()
-        for child in self.root.children:
-            new_root.add_point(child.centroid())
-        self.root = new_root
-
-def birch_clustering(tags, threshold=10):
-    cf_tree = CFTree(threshold)
-
-    # Chèn từng thẻ vào CFTree
-    for tag in tags:
-        cf_tree.insert(tag)
-
-    # Xuất ra các cụm với tâm cụm
-    clusters = [node.centroid() for node in cf_tree.root.children]
-    return clusters

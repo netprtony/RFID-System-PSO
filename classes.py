@@ -53,7 +53,7 @@ class SSPSO:
         self.best_positions = []
          # Biến đếm số vòng lặp fitness không đổi
         
-    def optimize(self, TAGS, RFID_RADIUS):
+    def optimize(self, TAGS, RFID_RADIUS=3.69):
         chaos_value = np.random.rand()  # Khởi tạo giá trị hỗn loạn ban đầu
         mu = 4  # Hằng số hỗn loạn
         stagnant_iterations = 0

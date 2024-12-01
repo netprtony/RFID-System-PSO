@@ -34,6 +34,12 @@ def snap_to_grid(position, grid_points):
     distances = np.linalg.norm(grid_points - position, axis=1)
     nearest_point = grid_points[np.argmin(distances)]
     return nearest_point
+def Reader_GRID(readers, GRID_SIZE):
+    grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
+   #Điều chỉnh vị trí các đầu đọc về mắt lưới gần nhất
+    for reader in readers:
+        reader.position = snap_to_grid(reader.position, grid_points)
+    return readers
 
 def selection_mechanism(tags, initial_num_readers, COVER_THRESHOLD):
     """Hàm chọn đầu đọc dựa trên KMeans và điều chỉnh vị trí về mắt lưới."""

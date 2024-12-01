@@ -1,5 +1,5 @@
 from classes import Tags, SSPSO, Readers
-from functions import selection_mechanism, mainOptimization, BieuDoSoSanh, initialize_readers_with_kmeans, calculate_covered_tags,calculate_interference_basic,Reader_GRID
+from functions import selection_mechanism, mainOptimization, BieuDoSoSanh, initialize_readers_with_kmeans, calculate_covered_tags,calculate_interference_basic,Reader_GRID, fitness_function_basic
 import numpy as np
 NUM_TAGS = 265
 NUM_ITERATION = 100
@@ -125,7 +125,7 @@ if __name__ == "__main__":
     tracking_3_2 = []
     tracking_1_6 = []
     tracking_0_8 = []
-    for i in range(1, 51):
+    for i in range(5, 51):
         reader_3_2 = initialize_readers_with_kmeans(tags, i)
         reader_0_8 = initialize_readers_with_kmeans(tags, i)
         reader_1_6 = initialize_readers_with_kmeans(tags, i)
@@ -142,13 +142,21 @@ if __name__ == "__main__":
         reader_1_6 = Reader_GRID(reader_1_6, 1.6)
         reader_0_8 = Reader_GRID(reader_0_8, 0.8)
 
-        IFT_3_2 = calculate_covered_tags(reader_3_2, tags)
-        IFT_1_6 = calculate_covered_tags(reader_1_6, tags)
-        IFT_0_8 = calculate_covered_tags(reader_0_8, tags)
+        IFT_3_2 = calculate_interference_basic(reader_3_2, tags)
+        IFT_1_6 = calculate_interference_basic(reader_1_6, tags)
+        IFT_0_8 = calculate_interference_basic(reader_0_8, tags)
+        
+        COV_3_2 = calculate_covered_tags(reader_3_2, tags)
+        COV_1_6 = calculate_covered_tags(reader_1_6, tags)
+        COV_0_8 = calculate_covered_tags(reader_0_8, tags)
 
-        tracking_3_2.append(np.array([IFT_3_2, i]))
-        tracking_1_6.append(np.array([IFT_1_6, i]))
-        tracking_0_8.append(np.array([IFT_0_8, i]))
+        FIT_3_2 = fitness_function_basic(COV_3_2, IFT_3_2, tags, 0.8, 0.2)
+        FIT_1_6 = fitness_function_basic(COV_1_6, IFT_1_6, tags, 0.8, 0.2)
+        FIT_0_8 = fitness_function_basic(COV_0_8, IFT_0_8, tags, 0.8, 0.2)
+        
+        tracking_3_2.append(np.array([FIT_3_2, i]))
+        tracking_1_6.append(np.array([FIT_1_6, i]))
+        tracking_0_8.append(np.array([FIT_0_8, i]))
 
     BieuDoSoSanh(tracking_3_2, tracking_1_6, tracking_0_8)
     

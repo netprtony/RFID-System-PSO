@@ -226,7 +226,7 @@ def BieuDoSoSanh(tracking3_2, tracking1_6, tracking0_8):
     plt.plot(readerNum0_8, COV0_8, marker='^', label='Grid 0.8', color='blue', linewidth=2)
     # Labels and legend
     plt.xlabel('Số lượng đầu đọc', fontsize=12)
-    plt.ylabel('Giá trị fitness', fontsize=12)
+    plt.ylabel('Thời gian thực hiện (s)', fontsize=12)
     plt.legend(fontsize=12)
     plt.grid(True)
     # Show the plot

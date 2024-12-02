@@ -39,8 +39,8 @@ class Readers:
     def update_position(self):
         self.position += self.velocity
 
-        self.position[0] = np.clip(self.position[0], 0, GRID_X)
-        self.position[1] = np.clip(self.position[1], 0, GRID_Y)
+        self.position[0] = np.clip(self.position[0], RFID_RADIUS, GRID_X - RFID_RADIUS)
+        self.position[1] = np.clip(self.position[1], RFID_RADIUS, GRID_Y - RFID_RADIUS)
 
 class SSPSO:
     def __init__(self, num_particles, dim, max_iter, readers):

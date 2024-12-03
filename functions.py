@@ -1,4 +1,5 @@
 import numpy as np
+import time
 from colorama import Fore, Style, init
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
@@ -80,29 +81,8 @@ def selection_mechanism(tags, initial_num_readers, COVER_THRESHOLD):
     return readers  # Trả về danh sách đầu đọc đã được chọn
 
 
-def BieuDoSoSanh(tracking3_2, tracking1_6, tracking0_8):
-    # Tách dữ liệu từ tracking
-    COV3_2 = [item[0] for item in tracking3_2]
-    readerNum3_2 = [item[1] for item in tracking3_2]
-    COV1_6 = [item[0] for item in tracking1_6]
-    readerNum1_6 = [item[1] for item in tracking1_6]
-    COV0_8 = [item[0] for item in tracking0_8]
-    readerNum0_8 = [item[1] for item in tracking0_8]
-    # Plot
-    plt.figure(figsize=(10, 6))
-    plt.plot(readerNum3_2, COV3_2, marker='^', label='Grid 3.2', color='gray', linewidth=2)
-    plt.plot(readerNum1_6, COV1_6, marker='^', label='Grid 1.6', color='red', linewidth=2)
-    plt.plot(readerNum0_8, COV0_8, marker='^', label='Grid 0.8', color='blue', linewidth=2)
-    # Labels and legend
-    plt.xlabel('Số lượng đầu đọc', fontsize=12)
-    plt.ylabel('Giá trị fitness', fontsize=12)
-    plt.legend(fontsize=12)
-    plt.grid(True)
-    # Show the plot
-    plt.show()
 
-
-def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=50):
+def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterations=5):
     no_change_iterations = 0
     best_fitness = -float('inf')
     best_positions = [reader.position.copy() for reader in readers]
@@ -146,7 +126,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
         COV = calculate_covered_tags(readers, tags)
         ITF = calculate_interference_basic(readers, tags, RFID_RADIUS)
         fitness = fitness_function_basic(COV, ITF, tags, 0.8, 0.2)
-        print(Fore.LIGHTYELLOW_EX + f"Fitness: {fitness}")
+        #print(Fore.LIGHTYELLOW_EX + f"Fitness: {fitness}")
         # Kiểm tra nếu giá trị fitness tốt hơn
         if fitness > best_fitness:
             best_fitness = fitness
@@ -158,11 +138,8 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
         # Khôi phục vị trí tốt nhất
         for reader, best_position in zip(readers, best_positions):
             reader.position = best_position
-    print(f"Final fitness: {best_fitness}")
+    #print(f"Final fitness: {best_fitness}")
     return readers
-
-
-
 def BieuDoReader(readers, tags, title, GRID_SIZE):
     """
     Vẽ biểu đồ vị trí các đầu đọc và các thẻ với mặt lưới.
@@ -211,26 +188,27 @@ def BieuDoReader(readers, tags, title, GRID_SIZE):
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     plt.show()
 
-def BieuDoSoSanh(tracking3_2, tracking1_6, tracking0_8):
-    # Tách dữ liệu từ tracking
-    COV3_2 = [item[0] for item in tracking3_2]
-    readerNum3_2 = [item[1] for item in tracking3_2]
-    COV1_6 = [item[0] for item in tracking1_6]
-    readerNum1_6 = [item[1] for item in tracking1_6]
-    COV0_8 = [item[0] for item in tracking0_8]
-    readerNum0_8 = [item[1] for item in tracking0_8]
+def BieuDoSoSanh(value1, value2, value3, xlabel, ylabel):
+   # Tách dữ liệu từ tracking
+    v1_x = [item[0] for item in value1]
+    v1_y = [item[1] for item in value1]
+    v2_x = [item[0] for item in value2]
+    v2_y = [item[1] for item in value2]
+    v3_x = [item[0] for item in value3]
+    v3_y = [item[1] for item in value3]
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(readerNum3_2, COV3_2, marker='^', label='Grid 3.2', color='gray', linewidth=2)
-    plt.plot(readerNum1_6, COV1_6, marker='^', label='Grid 1.6', color='red', linewidth=2)
-    plt.plot(readerNum0_8, COV0_8, marker='^', label='Grid 0.8', color='blue', linewidth=2)
+    plt.plot(v1_x, v1_y, marker='x', label='Grid 3.2', color='gray', linewidth=3)
+    plt.plot(v2_x, v2_y, marker='x', label='Grid 1.6', color='red', linewidth=3)
+    plt.plot(v3_x, v3_y, marker='x', label='Grid 0.8', color='blue', linewidth=3)
     # Labels and legend
-    plt.xlabel('Số lượng đầu đọc', fontsize=12)
-    plt.ylabel('Thời gian thực hiện (s)', fontsize=12)
-    plt.legend(fontsize=12)
+    plt.xlabel(xlabel, fontsize=15)
+    plt.ylabel(ylabel, fontsize=15)
+    plt.legend(fontsize=15)
     plt.grid(True)
     # Show the plot
     plt.show()
+
 
 def mainOptimization(tags, sspso, GRID_SIZE):
     sspso.readers = sspso.optimize(tags, RFID_RADIUS)
@@ -296,8 +274,32 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interferen
         readers.remove(reader)
 
     return readers
+def tracking_time(sspso, tags, GRID_SIZE):
+    start_time = time.time()
+    sspso.optimize(tags)
+    sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
+    sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE)
+    end_time = time.time()
+    return int(end_time - start_time)
 
-
+def tracking_COV(sspso, tags, GRID_SIZE):
+    sspso.optimize(tags)
+    sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
+    sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE)
+    COV = calculate_covered_tags(sspso.readers, tags)
+    return COV
+def tracking_IFT(sspso, tags, GRID_SIZE):
+    sspso.optimize(tags)
+    sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
+    sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE)
+    ITF = calculate_interference_basic(sspso.readers, tags)
+    return ITF
+def tracking_Fitness(sspso, tags, GRID_SIZE):
+    sspso.optimize(tags)
+    sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
+    sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE)
+    fitness = fitness_function_basic(calculate_covered_tags(sspso.readers, tags), calculate_interference_basic(sspso.readers, tags), tags, 0.8, 0.2)
+    return fitness
 tag_positions = np.array([
     [1.2725506818141274, 47.26795885127647],
     [42.3567994512635, 14.821376499938177],

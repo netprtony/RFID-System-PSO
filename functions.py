@@ -215,9 +215,7 @@ def mainOptimization(tags, sspso, GRID_SIZE):
     BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi tối ưu hội tụ", GRID_SIZE)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
     BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
-    grid_points = create_grid(GRID_SIZE, GRID_X, GRID_Y)
-    for reader in sspso.readers:
-            reader.position = snap_to_grid(reader.position, grid_points)
+    sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE)
     BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)       
     sspso.readers = Redundant_Reader_Elimination(sspso.readers, tags)
     BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)

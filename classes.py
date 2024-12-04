@@ -69,37 +69,37 @@ class SSPSO:
             # Cập nhật giá trị hỗn loạn
             chaos_value = mu * chaos_value * (1 - chaos_value)
             w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
-            
+            itr_stop = 0
             for reader in self.readers:
                 if reader.active:
-                    #print(f"Reader {j + 1}")
+                    print(f"Reader {j + 1}")
                     # Tính toán số thẻ được phủ sóng
                     COV = calculate_covered_tags(self.readers, TAGS, RFID_RADIUS)
                 
                     # Tính nhiễu
                     ITF = calculate_interference_basic(self.readers, TAGS, RFID_RADIUS)
-                    #print(f"COV: {COV}, ITF: {ITF}")
+                    print(f"COV: {COV}, ITF: {ITF}")
                     # Tính giá trị hàm mục tiêu
                     fitness_value = fitness_function_basic(COV, ITF, TAGS, 0.8, 0.2)
-                    #print(Fore.YELLOW + f"fitness value: {fitness_value}")
+                    print(Fore.YELLOW + f"fitness value: {fitness_value}")
                     w *=  chaos_value
                     if fitness_value > reader.best_value:  # Tối ưu hóa
                         reader.best_position = reader.position.copy()
                         reader.best_value = fitness_value
-                        #print(Fore.RED + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
+                        print(Fore.RED + f"Best position:{reader.best_position}, Best value:{reader.best_value}")
 
                     if fitness_value > self.global_best_value:  # Cập nhật vị trí tốt nhất toàn cục
                         self.global_best_position = reader.position.copy()
                         self.global_best_value = fitness_value
-                        #print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
+                        print(Fore.RED +f"Global best position{ self.global_best_position}, Global best value:{self.global_best_value}")
                         # Lưu vị trí của tất cả các đầu đọc khi đạt giá trị fitness tốt nhất
                         self.best_positions = [reader.position.copy() for reader in self.readers]
                         fitness_changed = True  # Đánh dấu có thay đổi fitness
                     reader.update_velocity(self.global_best_position, w, chaos_value)
-                    #print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")
+                    print( Fore.GREEN +f"    Ví trí cũ : {reader.position}")
                 
                     reader.update_position()
-                    #print(Fore.BLUE +f"    Ví trí mới : {reader.position}")
+                    print(Fore.BLUE +f"    Ví trí mới : {reader.position}")
                     j+=1
             
             #fitness_tracking.append([i + 1, self.global_best_value])
@@ -111,10 +111,11 @@ class SSPSO:
 
             # Dừng nếu fitness không thay đổi trong 5 vòng lặp liên tiếp hoặc đạt 100 vòng lặp
             if stagnant_iterations >= 5:
-                #print("Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
+                itr_stop = i + 1
+                print("Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
                 break 
     
-        #print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
+        print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
         # Trả về danh sách đầu đọc với vị trí tối ưu
-        return self.readers
+        return self.readers, itr_stop, self.global_best_value
     

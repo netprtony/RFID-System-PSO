@@ -6,14 +6,15 @@ NUM_TAGS = 265
 NUM_ITERATION = 100
 DIM = 2
 NUM_RFID_READERS = 3
+import random
 if __name__ == "__main__":
  
     # readers = [Readers(np.random.rand(2) * [50, 30]) for _ in range(NUM_RFID_READERS)]
     # tags = [Tags(np.random.rand(2) * [50, 50]) for _ in range(NUM_TAGS)]
-    
-    readers = selection_mechanism(tags, NUM_RFID_READERS, 0.95)
+    #tags = random.sample(random_tag, 99)
+    readers = selection_mechanism(tags, NUM_RFID_READERS,1)
     sspso = SSPSO(NUM_RFID_READERS, DIM, NUM_ITERATION, readers)
-    sspso.readers = mainOptimization(tags, sspso, GRID_SIZE=1.6)
+    sspso.readers = mainOptimization(tags, sspso, GRID_SIZE=3.2)
     
 
     

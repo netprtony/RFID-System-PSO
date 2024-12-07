@@ -112,7 +112,7 @@ class ParticleSwarmOptimizationAlgorithm:
             # Dừng nếu fitness không thay đổi trong 5 vòng lặp liên tiếp hoặc đạt 100 vòng lặp
             if stagnant_iterations >= 5:
                 itr_stop = i + 1
-                print("Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
+                print(Fore.RED +"Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
                 break 
     
         print(Style.BRIGHT + f"Tại vòng lặp thứ {i + 1} đạt độ bao phủ :{COV}, độ nhiễu :{ITF}, giá trị fitness = {self.global_best_value} vị trí tốt nhất: {self.global_best_position}")
@@ -199,7 +199,7 @@ class FireflyAlgorithm:
 
             # Điều kiện dừng sớm nếu fitness không đổi trong 5 vòng lặp liên tiếp
             if stagnant_iterations >= max_stagnant_iterations:
-                print(Fore.RED + "Early stopping: Fitness value hasn't changed for 5 consecutive iterations.")
+                print(Fore.RED + "Fitness không đổi trong 5 vòng lặp liên tiếp. Dừng tối ưu hóa.")
                 break
 
         # Tìm đom đóm có cường độ ánh sáng tốt nhất

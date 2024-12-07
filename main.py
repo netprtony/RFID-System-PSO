@@ -17,9 +17,9 @@ if __name__ == "__main__":
     # sspso = SSPSO(len(readers), DIM, NUM_ITERATION, readers)
     # sspso.readers = mainOptimization(tag_100, sspso, GRID_SIZE=3.2)
     
-    readers = selection_mechanism(numTag, INITIAL_NUM_RFID_READERS,1)
+    readers = selection_mechanism(numTag, INITIAL_NUM_RFID_READERS,0.9)
     FA_Algorithm(readers, numTag, 50 , 50, 3.2)
-    PSO_Algorithm(readers, numTag, 50 , 50, 3.2)
+    #PSO_Algorithm(readers, numTag, 50 , 50, 3.2)
 
     # tracking_3_2 = []
     # tracking_1_6 = []

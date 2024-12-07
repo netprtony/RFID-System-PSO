@@ -42,7 +42,7 @@ class Readers:
         self.position[0] = np.clip(self.position[0], RFID_RADIUS, GRID_X - RFID_RADIUS)
         self.position[1] = np.clip(self.position[1], RFID_RADIUS, GRID_Y - RFID_RADIUS)
 
-class SSPSO:
+class ParticleSwarmOptimizationAlgorithm:
     def __init__(self, num_particles, dim, max_iter, readers):
         self.num_particles = num_particles
         self.dim = dim
@@ -119,3 +119,89 @@ class SSPSO:
         # Trả về danh sách đầu đọc với vị trí tối ưu
         return self.readers, itr_stop, self.global_best_value
     
+class Firefly:
+    def __init__(self, position, dim=2, alpha=0.5, gamma=1, beta0=1):
+        """
+        Khởi tạo một đom đóm.
+        """
+        self.position = position                          # Vị trí hiện tại của đom đóm
+        self.light_intensity = 0                          # Cường độ ánh sáng (giá trị hàm mục tiêu)
+        self.alpha = alpha                                # Hệ số ngẫu nhiên
+        self.gamma = gamma                                # Hệ số suy giảm ánh sáng
+        self.beta0 = beta0                                # Sức hút ban đầu
+        self.best_position = self.position.copy()         # Vị trí tốt nhất mà đom đóm đạt được
+        self.active = True                                # Trạng thái hoạt động của đom đóm
+
+    def move_towards(self, other, attractiveness, random_factor):
+        """
+        Đom đóm di chuyển về phía một đom đóm khác dựa trên sức hút.
+        """
+        direction = other.position - self.position
+        self.position += attractiveness * direction + random_factor * (np.random.rand(len(self.position)) - 0.5)
+
+class FireflyAlgorithm:
+    def __init__(self, position, n_fireflies, dim = 2, bounds = [0 , GRID_X], alpha=0.5, gamma=1, beta0=1):
+        self.fireflies = [Firefly(position[i]) for i in range(n_fireflies)]
+        self.dim = dim
+        self.bounds = bounds
+        self.alpha = alpha
+        self.gamma = gamma
+        self.beta0 = beta0
+
+    def _compute_attractiveness(self, distance):
+        """
+        Tính sức hút giữa hai đom đóm.
+        """
+        return self.beta0 * np.exp(-self.gamma * (distance ** 2))
+
+    def optimize(self, TAGS, max_iter=100):
+        """
+        Chạy thuật toán FA để tối ưu hóa hàm mục tiêu với điều kiện dừng sớm.
+        """
+        # Biến lưu giá trị fitness tốt nhất và số vòng lặp không đổi
+        best_fitness_value = -float('inf')
+        stagnant_iterations = 0
+        max_stagnant_iterations = 5  # Số vòng lặp liên tiếp cho phép không đổi
+
+        for iter_count in range(max_iter):
+            tracking_iter = iter_count + 1
+            print(f"\nIteration {iter_count + 1}")
+            for i in range(len(self.fireflies)):
+                print(f"Firefly {i + 1}")
+                for j in range(len(self.fireflies)):
+                    if self.fireflies[j].light_intensity > self.fireflies[i].light_intensity:
+                        distance = np.linalg.norm(self.fireflies[i].position - self.fireflies[j].position)
+                        attractiveness = self._compute_attractiveness(distance)
+                        random_factor = self.alpha * (np.random.rand(self.dim) - 0.5)
+                        self.fireflies[i].move_towards(self.fireflies[j], attractiveness, random_factor)
+                
+                # Tính các giá trị liên quan
+                COV = calculate_covered_tags(self.fireflies, TAGS, RFID_RADIUS)
+                ITF = calculate_interference_basic(self.fireflies, TAGS, RFID_RADIUS)
+                print(f"COV: {COV}, ITF: {ITF}")
+                
+                # Tính giá trị hàm mục tiêu
+                fitness_value = fitness_function_basic(COV, ITF, TAGS, 0.8, 0.2)
+                print(Fore.YELLOW + f"fitness value: {fitness_value}")
+                
+                # Cập nhật cường độ ánh sáng của đom đóm
+                self.fireflies[i].light_intensity = fitness_value
+            
+            # Lấy giá trị fitness tốt nhất trong vòng lặp hiện tại
+            current_best_fitness = max(f.light_intensity for f in self.fireflies)
+
+            # Kiểm tra nếu fitness không đổi qua nhiều vòng lặp
+            if np.isclose(current_best_fitness, best_fitness_value):
+                stagnant_iterations += 1
+            else:
+                stagnant_iterations = 0  # Reset nếu fitness thay đổi
+                best_fitness_value = current_best_fitness
+
+            # Điều kiện dừng sớm nếu fitness không đổi trong 5 vòng lặp liên tiếp
+            if stagnant_iterations >= max_stagnant_iterations:
+                print(Fore.RED + "Early stopping: Fitness value hasn't changed for 5 consecutive iterations.")
+                break
+
+        # Tìm đom đóm có cường độ ánh sáng tốt nhất
+        best_firefly = max(self.fireflies, key=lambda f: f.light_intensity)
+        return self.fireflies, tracking_iter, current_best_fitness

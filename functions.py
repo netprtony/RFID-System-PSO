@@ -4,7 +4,7 @@ from colorama import Fore, Style, init
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from sklearn.cluster import KMeans
-from classes import Readers, Tags
+from classes import Readers, Tags, FireflyAlgorithm, ParticleSwarmOptimizationAlgorithm
 from classes import  GRID_X, GRID_Y
 from utils import calculate_covered_tags, calculate_interference_basic, fitness_function_basic, RFID_RADIUS
 UPDATE_INTERVAL = 500
@@ -186,7 +186,7 @@ def BieuDoReader(readers, tags, title, GRID_SIZE):
     active_reader_count = sum(reader.active for reader in readers)
 
     # Di chuyển các thông tin lên đầu biểu đồ
-    fig.text(0.3, 0.92, f"Có {coverage_tag:.0f} thẻ bao phủ trong {len(tags)}", fontsize=12, color="black", ha='left', va='top')
+    fig.text(0.3, 0.92, f"Có {len(tags)} thẻ được bao phủ {coverage_tag:.0f} thẻ", fontsize=12, color="black", ha='left', va='top')
     fig.text(0.5, 0.92, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange", ha='left', va='top')
     fig.text(0.6, 0.92, f"Số lượng đầu đọc: {active_reader_count}", fontsize=12, color="blue", ha='left', va='top')
 
@@ -217,8 +217,9 @@ def BieuDoSoSanh(value1, value2, value3, xlabel, ylabel):
     plt.show()
 
 
-def mainOptimization(tags, sspso, GRID_SIZE):
+def PSO_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
     start_time = time.time()
+    sspso = ParticleSwarmOptimizationAlgorithm(len(readers), DIM, 100, readers)
     sspso.readers, itr_stop, bestFitness = sspso.optimize(tags, RFID_RADIUS)
     #BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi tối ưu hội tụ", GRID_SIZE)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
@@ -312,6 +313,20 @@ def tracking_Fitness(sspso, tags, GRID_SIZE):
     sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
     fitness = fitness_function_basic(calculate_covered_tags(sspso.readers, tags), calculate_interference_basic(sspso.readers, tags), tags, 0.8, 0.2)
     return fitness
+
+def FA_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
+    start_time = time.time()
+    listFA_position = [reader.position for reader in readers]
+    fa = FireflyAlgorithm(listFA_position, len(readers))
+    firefilies, itr_stop, bestFitness = fa.optimize(tags)
+    firefilies = Reader_GRID(firefilies, GRID_SIZE, GRID_X, GRID_Y) 
+    firefilies = Redundant_Reader_Elimination(firefilies, tags)
+    end_time = time.time()
+    print(f"Optimization stopped after {itr_stop} iterations.")
+    print(f"Optimization time: {end_time - start_time:.2f} seconds.")
+    print("Độ bao phủ cuối cùng: {:.2f}%".format(calculate_covered_tags(firefilies, tags)))
+    print(F"Best fitness: {bestFitness:.2f}")
+    BieuDoReader(firefilies, tags, "Firefly Algorithm", GRID_SIZE)
 
 tag_positions = np.array([
     [1.2725506818141274, 47.26795885127647],

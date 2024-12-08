@@ -19,10 +19,10 @@ class Tags:
 class Readers:
     def __init__(self, position, dim = 2, max_velocity=0.5):
         self.position = position
-        self.velocity = np.random.rand(dim) * [0, 0.1]
+        self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
+        self.velocity = np.random.uniform(-self.max_velocity, self.max_velocity, size=dim)
         self.best_position = self.position.copy()
         self.best_value = 0
-        self.max_velocity = max_velocity  # Thêm giới hạn tốc độ tối đa
         self.active = True
 
     def update_velocity(self, global_best_position, w, c1=1.5, c2=1.5):
@@ -35,7 +35,7 @@ class Readers:
         # Tính toán tốc độ mới và ràng buộc nó theo giới hạn tối đa
         new_velocity = w * self.velocity + cognitive_component + social_component
         self.velocity = np.clip(new_velocity, -self.max_velocity, self.max_velocity)
-        #self.velocity = constrain_velocity(self.velocity, GRID_Y, 0)
+
     def update_position(self):
         self.position += self.velocity
 
@@ -68,7 +68,7 @@ class ParticleSwarmOptimizationAlgorithm:
             fitness_changed = False
             # Cập nhật giá trị hỗn loạn
             chaos_value = mu * chaos_value * (1 - chaos_value)
-            w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter)
+            w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter) * (1 + chaos_value * 0.1)
             itr_stop = 0
             for reader in self.readers:
                 if reader.active:
@@ -82,7 +82,7 @@ class ParticleSwarmOptimizationAlgorithm:
                     # Tính giá trị hàm mục tiêu
                     fitness_value = fitness_function_basic(COV, ITF, TAGS, 0.8, 0.2)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
-                    w *=  chaos_value
+                    w = w * (0.5 + chaos_value / 2)
                     if fitness_value > reader.best_value:  # Tối ưu hóa
                         reader.best_position = reader.position.copy()
                         reader.best_value = fitness_value

@@ -187,14 +187,75 @@ def BieuDoReader(readers, tags, title, GRID_SIZE):
 
     # Di chuyển các thông tin lên đầu biểu đồ
     fig.text(0.3, 0.92, f"Có {len(tags)} thẻ được bao phủ {coverage_tag:.0f} thẻ", fontsize=12, color="black", ha='left', va='top')
-    fig.text(0.5, 0.92, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange", ha='left', va='top')
-    fig.text(0.6, 0.92, f"Số lượng đầu đọc: {active_reader_count}", fontsize=12, color="blue", ha='left', va='top')
+    #fig.text(0.5, 0.92, f"Độ nhiễu: {interference:.2f}%", fontsize=12, color="orange", ha='left', va='top')
+    fig.text(0.75, 0.92, f"{active_reader_count} đầu đọc", fontsize=12, color="blue", ha='left', va='top')
 
-    ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1))  # Đưa chú thích biểu đồ ra ngoài phía trên bên phải
     # Đặt tiêu đề cho biểu đồ
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
+    ax.legend(loc='upper right')  # Đặt chú thích ở góc trên bên phải bên trong biểu đồ
     plt.show()
+def BieuDoReaderTongHop(readers_pso, readers_fa, tags, title_pso, title_fa, GRID_SIZE, GRID_X, GRID_Y, RFID_RADIUS):
+    """
+    Vẽ biểu đồ vị trí các đầu đọc và các thẻ với mặt lưới cho hai thuật toán.
 
+    Parameters:
+    - readers_pso: Danh sách các đối tượng reader của thuật toán PSO.
+    - readers_fa: Danh sách các đối tượng reader của thuật toán FA.
+    - tags: Danh sách các đối tượng tag.
+    - title_pso: Tiêu đề của biểu đồ PSO.
+    - title_fa: Tiêu đề của biểu đồ FA.
+    - GRID_SIZE: Kích thước của lưới.
+    - GRID_X: Chiều rộng của biểu đồ.
+    - GRID_Y: Chiều cao của biểu đồ.
+    - RFID_RADIUS: Bán kính phủ sóng của đầu đọc.
+    """
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
+    
+    def plot_readers(ax, readers, title, fig_text_coverage, fig_text_readers, fig_text_interference):
+        ax.set_xlim(0, GRID_X)
+        ax.set_ylim(0, GRID_Y)
+        ax.set_aspect('equal', 'box')
+
+        # Hiển thị mặt lưới
+        ax.set_xticks(np.arange(0, GRID_X + 1, GRID_SIZE))
+        ax.set_yticks(np.arange(0, GRID_Y + 1, GRID_SIZE))
+        ax.grid(color='gray', linestyle='--', linewidth=0.5)
+
+        # Vẽ các thẻ
+        tag_positions = np.array([tag.position for tag in tags])
+        tag_colors = ['red' if not any(np.linalg.norm(tag.position - reader.position) <= RFID_RADIUS for reader in readers if reader.active) else 'green' for tag in tags]
+        ax.scatter(tag_positions[:, 0], tag_positions[:, 1], color=tag_colors, label='Tags', s=20, marker='x')
+
+        # Vẽ các đầu đọc
+        active_reader_positions = np.array([reader.position for reader in readers if reader.active])
+        ax.scatter(active_reader_positions[:, 0], active_reader_positions[:, 1], color='blue', label='Readers', marker='^')
+
+        # Vẽ các vòng tròn phạm vi phủ sóng
+        for reader in readers:
+            if reader.active:
+                circle = plt.Circle(reader.position, RFID_RADIUS, color='black', fill=False, linestyle='-', linewidth=1, alpha=0.5)
+                ax.add_artist(circle)
+
+        # Thêm thông tin độ phủ sóng, độ nhiễu và số lượng đầu đọc
+        coverage_tag = calculate_covered_tags(readers, tags, RFID_RADIUS) / 100 * len(tags)  # Phải định nghĩa hàm calculate_covered_tags
+        interference = calculate_interference_basic(readers, tags, RFID_RADIUS)  # Phải định nghĩa hàm calculate_interference_basic
+        active_reader_count = sum(reader.active for reader in readers)
+
+        # Di chuyển các thông tin lên đầu biểu đồ
+        fig.text(0.3, 0.92, fig_text_coverage.format(len(tags), coverage_tag), fontsize=12, color="black", ha='left', va='top')
+        fig.text(0.5, 0.92, fig_text_readers.format(active_reader_count), fontsize=12, color="blue", ha='left', va='top')
+        fig.text(0.75, 0.92, fig_text_interference.format(interference), fontsize=12, color="red", ha='left', va='top')
+        # Đặt tiêu đề cho biểu đồ
+        ax.set_title(title)
+        ax.legend(loc='upper right')  # Đặt chú thích ở góc trên bên phải bên trong biểu đồ
+
+    # Vẽ biểu đồ cho PSO
+    plot_readers(ax1, readers_pso, title_pso, "Có {} thẻ được bao phủ {:.0f} thẻ", "{} đầu đọc", '"Độ nhiễu: {:.2f}%"')
+    
+    # Vẽ biểu đồ cho FA
+    plot_readers(ax2, readers_fa, title_fa, "Có {} thẻ được bao phủ {:.0f} thẻ", "{} đầu đọc", '"Độ nhiễu: {:.2f}%"')
+
+    plt.show()
 def BieuDoSoSanh(value1, value2, value3, xlabel, ylabel):
    # Tách dữ liệu từ tracking
     v1_x = [item[0] for item in value1]
@@ -232,6 +293,7 @@ def PSO_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
     print(f"Optimization stopped after {itr_stop} iterations.")
     print(f"Optimization time: {end_time - start_time:.2f} seconds.")
     print("Độ bao phủ cuối cùng: {:.2f}%".format(calculate_covered_tags(sspso.readers, tags)))
+    print("Nhiễu cuối cùng: {:.2f}".format(calculate_interference_basic(sspso.readers, tags)))
     print(F"Best fitness: {bestFitness:.2f}")
     BieuDoReader(sspso.readers, tags, "Biểu đồ cuối cùng", GRID_SIZE)
     return sspso.readers
@@ -319,6 +381,7 @@ def FA_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
     listFA_position = [reader.position for reader in readers]
     fa = FireflyAlgorithm(listFA_position, len(readers))
     firefilies, itr_stop, bestFitness = fa.optimize(tags)
+    firefilies = adjust_readers_location_by_virtual_force(firefilies, tags)
     firefilies = Reader_GRID(firefilies, GRID_SIZE, GRID_X, GRID_Y) 
     firefilies = Redundant_Reader_Elimination(firefilies, tags)
     end_time = time.time()

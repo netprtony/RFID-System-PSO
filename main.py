@@ -1,5 +1,5 @@
 from classes import Tags, ParticleSwarmOptimizationAlgorithm, Readers, FireflyAlgorithm
-from functions import PSO_Algorithm, FA_Algorithm, tracking_time, tracking_COV, tracking_Fitness, tracking_IFT, selection_mechanism, initialize_readers_with_kmeans, tags, BieuDoSoSanh, BieuDoReader
+from functions import BieuDoReaderTongHop, PSO_Algorithm, FA_Algorithm, tracking_time, tracking_COV, tracking_Fitness, tracking_IFT, selection_mechanism, initialize_readers_with_kmeans, tags, BieuDoSoSanh, BieuDoReader
 import numpy as np
 import time
 NUM_TAGS = 265
@@ -12,14 +12,19 @@ if __name__ == "__main__":
     # readers = [Readers(np.random.rand(2) * [50, 30]) for _ in range(NUM_RFID_READERS)]
     # tags = [Tags(np.random.rand(2) * [50, 50]) for _ in range(NUM_TAGS)]
     #tags = random.sample(random_tag, 99)
-    numTag = tags[:200]
+    numTag = tags[:50]
     # readers = selection_mechanism(tag_100, INITIAL_NUM_RFID_READERS,1)
     # sspso = SSPSO(len(readers), DIM, NUM_ITERATION, readers)
     # sspso.readers = mainOptimization(tag_100, sspso, GRID_SIZE=3.2)
+    GRID_SIZE = 0.8
+    GRID_X  = 50
+    GRID_Y = 50
+    readers_PSO = selection_mechanism(numTag, INITIAL_NUM_RFID_READERS,1)
+    PSO_Algorithm(readers_PSO, numTag, 50 , 50, GRID_SIZE)
     
-    readers = selection_mechanism(numTag, INITIAL_NUM_RFID_READERS,0.9)
-    FA_Algorithm(readers, numTag, 50 , 50, 3.2)
-    #PSO_Algorithm(readers, numTag, 50 , 50, 3.2)
+    reader_FA = [Readers(np.random.rand(2) * [50, 50]) for _ in range(len(readers_PSO))]
+    FA_Algorithm(reader_FA, numTag, 50 , 50, GRID_SIZE)
+    BieuDoReaderTongHop(readers_PSO, reader_FA, numTag, "PSO", "FA", GRID_SIZE, GRID_X, GRID_Y, 3.69)
 
     # tracking_3_2 = []
     # tracking_1_6 = []

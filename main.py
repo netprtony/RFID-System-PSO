@@ -30,21 +30,22 @@ if __name__ == "__main__":
     values_grid = [5.2, 2.6, 1.3]  # Cố định giá trị x
     tracking_FA = []  # Lưu kết quả cho FA
     tracking_PSO = []  # Lưu kết quả cho PSO
+    grid =  1.3
     num_readers = 50
     for i in range(5, 51, 5):
         print(f"Running with {i} readers")
         reader_PSO = initialize_readers_with_kmeans(numTag, i)
         reader_FA = [Readers(np.random.rand(2) * [50, 50]) for _ in range(i)]
         sspso = ParticleSwarmOptimizationAlgorithm(num_readers, DIM, NUM_ITERATION, reader_PSO)
-        FA_Algorithm(reader_FA, numTag, 50, 50, 5.2)
-        PSO_Algorithm(reader_PSO, numTag, 50, 50, 5.2)
-        value_FA = tracking_FA_COV(reader_FA, numTag, 5.2)
-        value_PSO = tracking_PSO_COV(sspso, numTag, 5.2)
+        #FA_Algorithm(reader_FA, numTag, 50, 50, grid)
+        #PSO_Algorithm(reader_PSO, numTag, 50, 50, grid)
+        value_FA = tracking_FA_IFT(reader_FA, numTag, grid)
+        value_PSO = tracking_PSO_IFT(sspso, numTag, grid)
         tracking_FA.append([i, value_FA])  # Thêm giá trị FA
         tracking_PSO.append([i, value_PSO])  # Thêm giá trị PSO
 
 # # Vẽ biểu đồ
-    BieuDoSoSanh(tracking_FA, tracking_PSO, "Số lượng đầu đọc", "Độ bao phủ (%)", "So sánh độ bao phủ giữa FA và PSO mắt lưới 5.2")
+    BieuDoSoSanh(tracking_FA, tracking_PSO, "Số lượng đầu đọc", "Độ nhiễu", f"So sánh độ nhiễu giữa FA và PSO mắt lưới {grid}")
 
     # for grid in values_grid:
     #     print(f"Running with grid size {grid}")

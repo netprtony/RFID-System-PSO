@@ -29,15 +29,15 @@ class Readers:
         r1 = np.random.rand(len(self.position))
         r2 = np.random.rand(len(self.position))
 
-        cognitive_component = c1 * r1 * (self.best_position - self.position)
+        cognitive_component = c1 * r1 * (self.best_position - self.position) 
         social_component = c2 * r2 * (global_best_position - self.position)
 
         # Tính toán tốc độ mới và ràng buộc nó theo giới hạn tối đa
-        new_velocity = w * self.velocity + cognitive_component + social_component
+        new_velocity = w * self.velocity + cognitive_component + social_component #Công thức cập nhật vận tốc (1)
         self.velocity = np.clip(new_velocity, -self.max_velocity, self.max_velocity)
 
     def update_position(self):
-        self.position += self.velocity
+        self.position += self.velocity # Cập nhật vị trí mới (2)
 
         self.position[0] = np.clip(self.position[0], RFID_RADIUS, GRID_X - RFID_RADIUS)
         self.position[1] = np.clip(self.position[1], RFID_RADIUS, GRID_Y - RFID_RADIUS)
@@ -66,7 +66,7 @@ class ParticleSwarmOptimizationAlgorithm:
             #print(f"Iteration {i + 1} ----------------------------{i + 1}------------------------{i + 1}")
              # Flag để kiểm tra nếu fitness_value không thay đổi trong vòng lặp này
             fitness_changed = False
-            # Cập nhật giá trị hỗn loạn
+            # Cập nhật giá trị hỗn loạn (14)
             chaos_value = mu * chaos_value * (1 - chaos_value)
             w = calculate_inertia_weight(0.9 ,0.4, i, self.max_iter) * (1 + chaos_value * 0.1)
             itr_stop = 0
@@ -82,7 +82,7 @@ class ParticleSwarmOptimizationAlgorithm:
                     # Tính giá trị hàm mục tiêu
                     fitness_value = fitness_function_basic(COV, ITF, TAGS, 0.8, 0.2)
                     print(Fore.YELLOW + f"fitness value: {fitness_value}")
-                    w = w * (0.5 + chaos_value / 2)
+                    w = w * (0.5 + chaos_value / 2)#(16)
                     if fitness_value > reader.best_value:  # Tối ưu hóa
                         reader.best_position = reader.position.copy()
                         reader.best_value = fitness_value

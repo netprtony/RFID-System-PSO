@@ -1,10 +1,10 @@
 import numpy as np
 
 RFID_RADIUS = 3.69
-def calculate_inertia_weight(w_max, w_min, iter, iter_max):
+def calculate_inertia_weight(w_max, w_min, iter, iter_max): #(15)
     return w_max - ((w_max - w_min) / iter_max) * iter
 
-def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):
+def calculate_covered_tags(readers, tags, rfid_radius=RFID_RADIUS):#f1(4) tính toán phần trăm độ bao phủ
     total_tag = len(tags)
     covered_tags = 0
     for tag in tags:
@@ -21,7 +21,7 @@ def countReaderActive(readers):
     return count
 
 
-def calculate_interference_basic(readers, tags, rfid_radius=RFID_RADIUS):
+def calculate_interference_basic(readers, tags, rfid_radius=RFID_RADIUS): #IFT (5) mức độ nhiễu
     """
     Tính toán nhiễu đơn giản, chỉ kiểm tra số lượng ăng-ten phủ sóng cho mỗi thẻ.
 
@@ -41,7 +41,7 @@ def calculate_interference_basic(readers, tags, rfid_radius=RFID_RADIUS):
     ITF = (ITF / len(tags)) * 100  # Chuyển thành phần trăm
     return ITF
 
-def fitness_function_basic(COV, ITF, tags, w1, w2): # 23.optimizing_radio
+def fitness_function_basic(COV, ITF, tags, w1, w2): # Hàm fitness (7)
     """
     Tính toán hàm mục tiêu đơn giản dựa trên độ phủ và nhiễu.
     
@@ -52,7 +52,7 @@ def fitness_function_basic(COV, ITF, tags, w1, w2): # 23.optimizing_radio
     Trả về:
     Giá trị hàm mục tiêu
     """
-    fitness = COV/100 * w1 + (len(tags)/(ITF+len(tags))) * w2
+    fitness = COV/100 * w1 + (len(tags)/(ITF+len(tags))) * w2 # Tổng nhiễu (6)
     return fitness
 
 

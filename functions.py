@@ -100,7 +100,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
             total_exclusion_force = np.array([0.0, 0.0])
             total_attraction_force = np.array([0.0, 0.0])
 
-            # 1. Lực đẩy (Exclusion Operator)
+            # 1. Lực đẩy (Exclusion Operator) (8) (9)
             for other_reader in readers:
                 if other_reader != reader:
                     distance = np.linalg.norm(reader.position - other_reader.position)
@@ -110,7 +110,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
                         direction = (reader.position - other_reader.position) / distance
                         total_exclusion_force += force_magnitude * direction
 
-            # 2. Lực hút (Attraction Operator)
+            # 2. Lực hút (Attraction Operator) (10) (11)
             for tag in tags:
                 if not tag.covered:  # Nếu thẻ chưa được bao phủ
                     distance = np.linalg.norm(reader.position - tag.position)
@@ -120,7 +120,7 @@ def adjust_readers_location_by_virtual_force(readers, tags, max_no_change_iterat
                         direction = (tag.position - reader.position) / distance
                         total_attraction_force += force_magnitude * direction
 
-            # 3. Cập nhật vị trí đầu đọc dựa trên lực tổng hợp
+            # 3. Cập nhật vị trí đầu đọc dựa trên lực tổng hợp(12)(13)
             total_force = total_exclusion_force + total_attraction_force
             reader.position += total_force
         
@@ -194,7 +194,7 @@ def BieuDoReader(readers, tags, title, GRID_SIZE):
     fig.suptitle(title, fontsize=14, ha='left', va='top', fontweight='bold', x=0.01, y=0.99)
     ax.legend(loc='upper right')  # Đặt chú thích ở góc trên bên phải bên trong biểu đồ
     plt.show()
-def BieuDoReaderTongHop(readers_pso, readers_fa, tags, title_pso, title_fa, GRID_SIZE, GRID_X, GRID_Y, RFID_RADIUS):
+def BieuDoReaderTongHop(readers_pso, readers_fa, tags, GRID_SIZE, GRID_X, GRID_Y, RFID_RADIUS):
     """
     Vẽ biểu đồ vị trí các đầu đọc và các thẻ với mặt lưới cho hai thuật toán.
 
@@ -211,7 +211,7 @@ def BieuDoReaderTongHop(readers_pso, readers_fa, tags, title_pso, title_fa, GRID
     """
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 8))
     
-    def plot_readers(ax, readers, title, fig_text_coverage, fig_text_readers, fig_text_interference):
+    def plot_readers(ax, readers, title):
         ax.set_xlim(0, GRID_X)
         ax.set_ylim(0, GRID_Y)
         ax.set_aspect('equal', 'box')
@@ -242,43 +242,55 @@ def BieuDoReaderTongHop(readers_pso, readers_fa, tags, title_pso, title_fa, GRID
         active_reader_count = sum(reader.active for reader in readers)
 
         # Di chuyển các thông tin lên đầu biểu đồ
-        fig.text(0.3, 0.92, fig_text_coverage.format(len(tags), coverage_tag), fontsize=12, color="black", ha='left', va='top')
-        fig.text(0.5, 0.92, fig_text_readers.format(active_reader_count), fontsize=12, color="blue", ha='left', va='top')
-        fig.text(0.75, 0.92, fig_text_interference.format(interference), fontsize=12, color="red", ha='left', va='top')
+        # fig.text(0.3, 0.92, fig_text_coverage.format(len(tags), coverage_tag), fontsize=12, color="black", ha='left', va='top')
+        # fig.text(0.5, 0.92, fig_text_readers.format(active_reader_count), fontsize=12, color="blue", ha='left', va='top')
+        # fig.text(0.75, 0.92, fig_text_interference.format(interference), fontsize=12, color="red", ha='left', va='top')
         # Đặt tiêu đề cho biểu đồ
         ax.set_title(title)
         ax.legend(loc='upper right')  # Đặt chú thích ở góc trên bên phải bên trong biểu đồ
 
+    coverage_tagPSO = int(calculate_covered_tags(readers_pso, tags, RFID_RADIUS) / 100 * len(tags))  # Phải định nghĩa hàm calculate_covered_tags
+    interferencePSO = calculate_interference_basic(readers_pso, tags, RFID_RADIUS)  # Phải định nghĩa hàm calculate_interference_basic
+    active_reader_countPSO = sum(reader.active for reader in readers_pso)
+
+    coverage_tagFA = int(calculate_covered_tags(readers_fa, tags, RFID_RADIUS) / 100 * len(tags))  # Phải định nghĩa hàm calculate_covered_tags
+    interferenceFA= calculate_interference_basic(readers_fa, tags, RFID_RADIUS)  # Phải định nghĩa hàm calculate_interference_basic
+    active_reader_countFA = sum(reader.active for reader in readers_fa)
     # Vẽ biểu đồ cho PSO
-    plot_readers(ax1, readers_pso, title_pso, "Có {} thẻ được bao phủ {:.0f} thẻ", "{} đầu đọc", '"Độ nhiễu: {:.2f}%"')
+    plot_readers(ax1, readers_pso, f"PSO: {active_reader_countPSO} đầu đọc bao phủ {coverage_tagPSO}/{len(tags)} thẻ, nhiễu: {interferencePSO:.2f}%")
     
     # Vẽ biểu đồ cho FA
-    plot_readers(ax2, readers_fa, title_fa, "Có {} thẻ được bao phủ {:.0f} thẻ", "{} đầu đọc", '"Độ nhiễu: {:.2f}%"')
+    plot_readers(ax2, readers_fa, f"FA: {active_reader_countFA} đầu đọc bao phủ {coverage_tagFA}/{len(tags)} thẻ, nhiễu: {interferenceFA:.2f}%""")
 
     plt.show()
-def BieuDoSoSanh(value1, value2, value3, xlabel, ylabel):
-   # Tách dữ liệu từ tracking
+def BieuDoSoSanh(value1, value2, xlabel, ylabel, title):
+    # Tách dữ liệu từ tracking
     v1_x = [item[0] for item in value1]
     v1_y = [item[1] for item in value1]
     v2_x = [item[0] for item in value2]
     v2_y = [item[1] for item in value2]
-    v3_x = [item[0] for item in value3]
-    v3_y = [item[1] for item in value3]
+    
     # Plot
     plt.figure(figsize=(10, 6))
-    plt.plot(v1_x, v1_y, marker='x', label='Grid 3.2', color='gray', linewidth=3)
-    plt.plot(v2_x, v2_y, marker='x', label='Grid 1.6', color='red', linewidth=3)
-    plt.plot(v3_x, v3_y, marker='x', label='Grid 0.8', color='blue', linewidth=3)
+    plt.plot(v1_x, v1_y, marker='D', label='FA', color='blue', linewidth=2)  # HGA với marker là diamond
+    plt.plot(v2_x, v2_y, marker='s', label='PSO', color='orange', linewidth=2)  # HPSO với marker là square
+    
     # Labels and legend
+    plt.title(f"{title}", fontsize=18)
     plt.xlabel(xlabel, fontsize=15)
     plt.ylabel(ylabel, fontsize=15)
-    plt.legend(fontsize=15)
-    plt.grid(True)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    #plt.ylim(70, 100)  # Giới hạn trục y
+    plt.legend(fontsize=12)
+    plt.grid(True, linestyle='--', alpha=0.7)  # Lưới nhẹ
+    
     # Show the plot
     plt.show()
 
 
 def PSO_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
+    reader_init = len(readers)
     start_time = time.time()
     sspso = ParticleSwarmOptimizationAlgorithm(len(readers), DIM, 100, readers)
     sspso.readers, itr_stop, bestFitness = sspso.optimize(tags, RFID_RADIUS)
@@ -286,16 +298,22 @@ def PSO_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
     #BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi tối ưu hóa bằng lực ảo", GRID_SIZE)
     sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
-    #BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)       
-    sspso.readers = Redundant_Reader_Elimination(sspso.readers, tags)
+    #BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi đưa vị trí về mắt lưới", GRID_SIZE)     
+    cov_before = calculate_covered_tags(readers, tags)  
+    ift_before = calculate_interference_basic(readers, tags)
+    #sspso.readers = Redundant_Reader_Elimination(sspso.readers, tags)
     #BieuDoReader(sspso.readers, tags, "Biểu đồ sau khi loại bỏ đầu đọc dư thừa", GRID_SIZE)
     end_time = time.time()
     print(f"Optimization stopped after {itr_stop} iterations.")
     print(f"Optimization time: {end_time - start_time:.2f} seconds.")
-    print("Độ bao phủ cuối cùng: {:.2f}%".format(calculate_covered_tags(sspso.readers, tags)))
-    print("Nhiễu cuối cùng: {:.2f}".format(calculate_interference_basic(sspso.readers, tags)))
+    print(f"Số lượng đầu đọc ban đầu: {reader_init}")
+    print(f"Số lượng đầu đọc cuối cùng: {len(sspso.readers)}")
+    print(Fore.RED + f"Độ bao phủ khi chưa loại bỏ dư thừa {cov_before:.2f}")
+    print(Fore.RED + f"Độ nhiễu khi chưa loại bỏ dư thừa: {ift_before:.2f}")
+    print(Fore.GREEN +"Độ bao phủ cuối cùng: {:.2f}%".format(calculate_covered_tags(sspso.readers, tags)))
+    print(Fore.GREEN +"Nhiễu cuối cùng: {:.2f}".format(calculate_interference_basic(sspso.readers, tags)))
     print(F"Best fitness: {bestFitness:.2f}")
-    BieuDoReader(sspso.readers, tags, "Biểu đồ cuối cùng", GRID_SIZE)
+    #BieuDoReader(sspso.readers, tags, "PSO", GRID_SIZE)
     return sspso.readers
     
 
@@ -349,7 +367,7 @@ def Redundant_Reader_Elimination(readers, tags, coverage_threshold=1, interferen
         readers.remove(reader)
 
     return readers
-def tracking_time(sspso, tags, GRID_SIZE):
+def tracking_PSO_time(sspso, tags, GRID_SIZE):
     start_time = time.time()
     sspso.optimize(tags)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
@@ -357,39 +375,74 @@ def tracking_time(sspso, tags, GRID_SIZE):
     end_time = time.time()
     return int(end_time - start_time)
 
-def tracking_COV(sspso, tags, GRID_SIZE):
+def tracking_PSO_COV(sspso, tags, GRID_SIZE):
     sspso.optimize(tags)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
     sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
     COV = calculate_covered_tags(sspso.readers, tags)
     return COV
-def tracking_IFT(sspso, tags, GRID_SIZE):
+def tracking_PSO_IFT(sspso, tags, GRID_SIZE):
     sspso.optimize(tags)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
     sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
     ITF = calculate_interference_basic(sspso.readers, tags)
     return ITF
-def tracking_Fitness(sspso, tags, GRID_SIZE):
+def tracking_PSO_Fitness(sspso, tags, GRID_SIZE):
     sspso.optimize(tags)
     sspso.readers = adjust_readers_location_by_virtual_force(sspso.readers, tags)
     sspso.readers = Reader_GRID(sspso.readers, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
     fitness = fitness_function_basic(calculate_covered_tags(sspso.readers, tags), calculate_interference_basic(sspso.readers, tags), tags, 0.8, 0.2)
     return fitness
 
+def tracking_FA_time(reader_FA, tags, GRID_SIZE):
+    start_time = time.time()
+    FA_Algorithm(reader_FA, tags, 50 , 50, GRID_SIZE)
+    reader_FA = adjust_readers_location_by_virtual_force(reader_FA, tags)
+    reader_FA = Reader_GRID(reader_FA, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
+    end_time = time.time()
+    return int(end_time - start_time)
+
+def tracking_FA_COV(reader_FA, tags, GRID_SIZE):
+    FA_Algorithm(reader_FA, tags, 50 , 50, GRID_SIZE)
+    reader_FA = adjust_readers_location_by_virtual_force(reader_FA, tags)
+    reader_FA = Reader_GRID(reader_FA, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
+    COV = calculate_covered_tags(reader_FA, tags)
+    return COV
+def tracking_FA_IFT(reader_FA, tags, GRID_SIZE):
+    FA_Algorithm(reader_FA, tags, 50 , 50, GRID_SIZE)
+    reader_FA = adjust_readers_location_by_virtual_force(reader_FA, tags)
+    reader_FA = Reader_GRID(reader_FA, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
+    ITF = calculate_interference_basic(reader_FA, tags)
+    return ITF
+def tracking_FA_Fitness(reader_FA, tags, GRID_SIZE):
+    FA_Algorithm(reader_FA, tags, 50 , 50, GRID_SIZE)
+    reader_FA = adjust_readers_location_by_virtual_force(reader_FA, tags)
+    reader_FA = Reader_GRID(reader_FA, GRID_SIZE, GRID_X=GRID_X, GRID_Y=GRID_Y) 
+    fitness = fitness_function_basic(calculate_covered_tags(reader_FA, tags), calculate_interference_basic(reader_FA, tags), tags, 0.8, 0.2)
+    return fitness
+
 def FA_Algorithm(readers, tags, GRID_X, GRID_Y, GRID_SIZE):
+    reader_init = len(readers)
     start_time = time.time()
     listFA_position = [reader.position for reader in readers]
     fa = FireflyAlgorithm(listFA_position, len(readers))
     firefilies, itr_stop, bestFitness = fa.optimize(tags)
     firefilies = adjust_readers_location_by_virtual_force(firefilies, tags)
     firefilies = Reader_GRID(firefilies, GRID_SIZE, GRID_X, GRID_Y) 
-    firefilies = Redundant_Reader_Elimination(firefilies, tags)
+    cov_before = calculate_covered_tags(firefilies, tags)
+    ift_before = calculate_interference_basic(firefilies, tags)
+    #firefilies = Redundant_Reader_Elimination(firefilies, tags)
     end_time = time.time()
     print(f"Optimization stopped after {itr_stop} iterations.")
     print(f"Optimization time: {end_time - start_time:.2f} seconds.")
+    print(f"Số lượng đầu đọc ban đầu: {reader_init}")
+    print(f"Số lượng đầu đọc cuối cùng: {len(firefilies)}")
+    print(f"Độ bao phủ khi chưa loại bỏ dư thừa {cov_before:.2f}")
+    print(f"Độ nhiễu khi chưa loại bỏ dư thừa: {ift_before:.2f}")
     print("Độ bao phủ cuối cùng: {:.2f}%".format(calculate_covered_tags(firefilies, tags)))
+    print("Nhiễu cuối cùng: {:.2f}".format(calculate_interference_basic(firefilies, tags)))
     print(F"Best fitness: {bestFitness:.2f}")
-    BieuDoReader(firefilies, tags, "Firefly Algorithm", GRID_SIZE)
+    #BieuDoReader(firefilies, tags, "Firefly Algorithm", GRID_SIZE)
 
 tag_positions = np.array([
     [41.233776269385814, 32.43297604049532],

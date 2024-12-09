@@ -39,13 +39,13 @@ if __name__ == "__main__":
         sspso = ParticleSwarmOptimizationAlgorithm(num_readers, DIM, NUM_ITERATION, reader_PSO)
         #FA_Algorithm(reader_FA, numTag, 50, 50, grid)
         #PSO_Algorithm(reader_PSO, numTag, 50, 50, grid)
-        value_FA = tracking_FA_IFT(reader_FA, numTag, grid)
-        value_PSO = tracking_PSO_IFT(sspso, numTag, grid)
+        value_FA = tracking_FA_Fitness(reader_FA, numTag, grid)
+        value_PSO = tracking_PSO_Fitness(sspso, numTag, grid)
         tracking_FA.append([i, value_FA])  # Thêm giá trị FA
         tracking_PSO.append([i, value_PSO])  # Thêm giá trị PSO
 
 # # Vẽ biểu đồ
-    BieuDoSoSanh(tracking_FA, tracking_PSO, "Số lượng đầu đọc", "Độ nhiễu", f"So sánh độ nhiễu giữa FA và PSO mắt lưới {grid}")
+    BieuDoSoSanh(tracking_FA, tracking_PSO, "Số lượng đầu đọc", "Giá trị fitness", f"So sánh giá trị fitness giữa FA và PSO mắt lưới {grid}")
 
     # for grid in values_grid:
     #     print(f"Running with grid size {grid}")

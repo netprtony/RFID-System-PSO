@@ -36,7 +36,7 @@ if __name__ == "__main__":
             print(f"Running with {i} readers")
             reader_PSO = initialize_readers_with_kmeans(numTag, i)
             reader_FA = [Readers(np.random.rand(2) * [50, 50]) for _ in range(i)]
-            sspso = ParticleSwarmOptimizationAlgorithm(num_readers, DIM, NUM_ITERATION, reader_PSO)
+            sspso = ParticleSwarmOptimizationAlgorithm(len(reader_PSO), DIM, NUM_ITERATION, reader_PSO)
             value_FA = tracking_FA_Fitness(reader_FA, numTag, GRID_SIZE)
             value_PSO = tracking_PSO_Fitness(sspso, numTag, GRID_SIZE)
             tracking_FA.append([i, value_FA])  # Thêm giá trị FA
